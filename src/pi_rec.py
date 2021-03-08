@@ -67,6 +67,7 @@ class PiRec():
         )
 
         index = 0
+        print(self.results_path)
         for items in test_loader:
             name = self.test_dataset.load_name(index)
             images, images_gray, edges, color_domain = self.cuda(*items)

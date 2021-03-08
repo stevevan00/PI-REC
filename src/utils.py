@@ -21,7 +21,10 @@ def resize(img, height, width, centerCrop=True, interp='bilinear'):
         i = (imgw - side) // 2
         img = img[j:j + side, i:i + side, ...]
 
-    img = scipy.misc.imresize(img, [height, width], interp=interp)
+    if interp == 'bilinear':
+        img = cv2.resize(img, (height, width), interpolation=cv2.INTER_LINEAR)
+    else:
+        img = cv2.resize(img, (height, width), interpolation=cv2.INTER_LANCZOS4)
 
     return img
 

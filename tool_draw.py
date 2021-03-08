@@ -296,13 +296,20 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # check the exist of path and the weights files
-    config = check_load_G(args)
-    model_G = load_model_G(config)
-    model_R = None
+    datasets = ['Asian', 'Non_Asian', 'Anime', 'Pixiv', 'Webtoon']
+    models_G = []
+    models_R = []
+    
+    for ds in datasets:
+        config = check_load_G(args)
+        model_G = load_model_G(config)
+        model_R = None
 
-    if args.refinement:
-        config = check_load_R(args)
-        model_R = load_model_R(config)
+        if args.refinement:
+            config = check_load_R(args)
+            model_R = load_model_R(config)
+        models_G.append(model_G)
+        models_R.append(model_R)
 
     WIN_SIZE = config.INPUT_SIZE
 
@@ -311,7 +318,7 @@ if __name__ == '__main__':
     color_domain += 255  # turn white
     output = np.zeros(color_domain.shape, np.uint8)  # output image to be shown
 
-    MODE = buttonbox("Choose your model:\n 1:draw from empty \n 2:draw from color_domain and edge \n 3:draw from pic",
+    MODE = buttonbox("Choose your model image:\n 1:draw from empty \n 2:draw from color_domain and edge \n 3:draw from pic",
                      choices=("1", "2", "3", "cancel"),
                      title="PI-REC")
     if MODE == "1":
@@ -338,7 +345,28 @@ if __name__ == '__main__':
         # print(edge[64])
     else:
         exit(0)
-
+        
+    MODEL = buttonbox("Choose your model:\n 1: Asian \n 2: Non Asian \n 3: Anime \n 4: Pixiv \n 5: Webtoon",
+                     choices=("1", "2", "3", "4", "5", "cancel"),
+                     title="PI-REC")
+    if MODEL == "1":
+        model_G = models_G[0]
+        model_R = models_R[0]
+    elif MODEL == "2":
+        model_G = models_G[1]
+        model_R = models_R[1]
+    elif MODEL == "3":
+        model_G = models_G[2]
+        model_R = models_R[2]
+    elif MODEL == "4":
+        model_G = models_G[3]
+        model_R = models_R[3]
+    elif MODEL == "5":
+        model_G = models_G[4]
+        model_R = models_R[4]
+    else:
+        exit(0)
+        
     # input and output windows
     cv.namedWindow('edge', cv.WINDOW_NORMAL)
     cv.namedWindow('color_domain', cv.WINDOW_NORMAL)
@@ -356,7 +384,7 @@ if __name__ == '__main__':
     cv.createTrackbar('G', 'pane', 0, 255, nothing)
     cv.createTrackbar('B', 'pane', 0, 255, nothing)
     cv.moveWindow('pane', edge.shape[1] + 120, 370)
-
+    
     while 1:
         cv.imshow('output', output)
         cv.imshow('edge', edge)
@@ -371,7 +399,6 @@ if __name__ == '__main__':
         PANE = [b, g, r]
         cv.imshow('pane', pane)
         k = cv.waitKey(5)
-
         # key bindings
         if k == 27 or k == ord('q'):  # esc to exit
             break
@@ -446,6 +473,8 @@ if __name__ == '__main__':
         elif k == ord('l'):
             output = lighter(output)
         elif k == ord('e'):
+            eraser_mode = not eraser_mode
+        elif k == ord('z'):
             eraser_mode = not eraser_mode
 
     cv.destroyAllWindows()

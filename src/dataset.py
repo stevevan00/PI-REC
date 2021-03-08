@@ -7,11 +7,13 @@ import numpy as np
 import torchvision.transforms.functional as F
 from torch.utils.data import DataLoader
 from PIL import Image
-from scipy.misc import imread
+# from scipy.misc import imread
+from skimage.io import imread
 from skimage.feature import canny
 from skimage.color import rgb2gray
+import skimage
 from .utils import img_kmeans
-import cv2 as cv
+import cv2
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -67,12 +69,12 @@ class Dataset(torch.utils.data.Dataset):
         # To get color domain
         # random_blur = 2 * np.random.randint(7, 18) + 1
         random_blur = 25
-        img_color_domain = cv.medianBlur(img, random_blur)
+        img_color_domain = cv2.medianBlur(img, random_blur)
         K = self.km
         # K = np.random.randint(2, 6)
         img_color_domain = img_kmeans(img_color_domain, K)
         # img_blur = cv.medianBlur(img_blur, np.random.randint(1, 4) * 2 - 1)
-        img_color_domain = cv.medianBlur(img_color_domain, 3)
+        img_color_domain = cv2.medianBlur(img_color_domain, 3)
 
         return self.to_tensor(img), self.to_tensor(img_gray), self.to_tensor(edge), self.to_tensor(img_color_domain)
 
@@ -106,7 +108,11 @@ class Dataset(torch.utils.data.Dataset):
             i = (imgw - side) // 2
             img = img[j:j + side, i:i + side, ...]
 
-        img = scipy.misc.imresize(img, [height, width], interp=interp)
+        if interp == 'bilinear':
+            img = cv2.resize(img, (height, width), interpolation=cv2.INTER_LINEAR)
+        else:
+            img = cv2.resize(img, (height, width), interpolation=cv2.INTER_LANCZOS4)
+
 
         return img
 
