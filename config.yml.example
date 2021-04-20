@@ -9,5 +9,5 @@ REFINE_FLIST: ./datasets/celeba/refine  # refinement dir path used in refine.py
 
 BATCH_SIZE: 4                 # input batch size for training
 INPUT_SIZE: 128               # image will be cropped into [INPUT_SIZE, INPUT_SIZE]
-SIGMA: 3.5                    # standard deviation of the Gaussian filter used in Canny edge detector (0: random, -1: no edge)
-KM: 10                         # number of colors in color domain, used in K-Means algorithm
+SIGMA: 3.3                    # standard deviation of the Gaussian filter used in Canny edge detector (0: random, -1: no edge)
+KM: 3                         # number of colors in color domain, used in K-Means algorithm

@@ -7,7 +7,7 @@ Interactive Image Drawing tool of PI-REC.
 Paper: PI-REC: Progressive Image Reconstruction Network With Edge and Color Domain 2019.3
 
 Command:
-    python tool_draw.py --path <your weights directory path> -r
+    python tool_draw.py  [-r]
 
 README FIRST:
     Four windows will show up, one for color domain, one for edge, one for output and a pane.
@@ -28,9 +28,11 @@ Key `x` | To save the binary edge
 Key `c` | To save the color domain
 Key `s` | To save the output
 Key `q` | To quit
+Key `z` | To choose model dataset to use
 
                 #####################################
                 #####  Author: youyuge34@github  ####
+                #####  Edited by: Steven Evan    ####
                 #####    License-CC BY·NC 4.0    ####
                 #####################################
 ===============================================================================
@@ -157,18 +159,18 @@ def onmouse_edge(event, x, y, flags, param):
         cv.circle(edge, (x, y), radius, BLACK, THICKNESS, lineType=cv.LINE_AA)
 
 
-def check_load_G(args):
+def check_load_G(path):
     """
     Check the directory and weights files. Load the config file.
     """
-    if not os.path.exists(args.path):
-        raise NotADirectoryError('Path <' + str(args.path) + '> does not exist!')
+    if not os.path.exists(path):
+        raise NotADirectoryError('Path <' + str(path) + '> does not exist!')
 
-    G_weight_files = list(glob.glob(os.path.join(args.path, 'G_Model_gen*.pth')))
+    G_weight_files = list(glob.glob(os.path.join(path, 'G_Model_gen*.pth')))
     if len(G_weight_files) == 0:
-        raise FileNotFoundError('Weights file <G_Model_gen*.pth> cannot be found under path: ' + args.path)
+        raise FileNotFoundError('Weights file <G_Model_gen*.pth> cannot be found under path: ' + path)
 
-    config_path = os.path.join(args.path, 'config.yml')
+    config_path = os.path.join(path, 'config.yml')
     # copy config template if does't exist
     if not os.path.exists(config_path):
         shutil.copyfile('./config.yml.example', config_path)
@@ -179,16 +181,16 @@ def check_load_G(args):
     return config
 
 
-def check_load_R(args):
+def check_load_R(path):
     """
     Check the directory and weights files. Load the config file.
     """
 
-    R_weight_files = list(glob.glob(os.path.join(args.path, 'R_Model_gen*.pth')))
+    R_weight_files = list(glob.glob(os.path.join(path, 'R_Model_gen*.pth')))
     if len(R_weight_files) == 0:
-        raise FileNotFoundError('Weights file <R_Model_gen*.pth> cannot be found under path: ' + args.path)
+        raise FileNotFoundError('Weights file <R_Model_gen*.pth> cannot be found under path: ' + path)
 
-    config_path = os.path.join(args.path, 'config.yml')
+    config_path = os.path.join(path, 'config.yml')
 
     # load config file
     config = Config(config_path)
@@ -289,7 +291,7 @@ if __name__ == '__main__':
     print(__doc__)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--path', type=str, help='path of model weights files <.pth>')
+    # parser.add_argument('-p', '--path', type=str, help='path of model weights files <.pth>')
     parser.add_argument('-c', '--canny', type=float, default=3, help='sigma of canny')
     parser.add_argument('-k', '--kmeans', type=int, default=3, help='color numbers of kmeans')
     parser.add_argument('-r', '--refinement', action='store_true', help='load refinement model')
@@ -297,16 +299,19 @@ if __name__ == '__main__':
 
     # check the exist of path and the weights files
     datasets = ['Asian', 'Non_Asian', 'Anime', 'Pixiv', 'Webtoon']
+    # datasets = ['Asian', 'celeba', 'getchu-anime', 'Pixiv', 'Webtoon']
+    add_prev = True
+    if add_prev: datasets += ['celeba', 'getchu-anime']
     models_G = []
     models_R = []
     
     for ds in datasets:
-        config = check_load_G(args)
+        config = check_load_G('./models/{}'.format(ds))
         model_G = load_model_G(config)
         model_R = None
 
         if args.refinement:
-            config = check_load_R(args)
+            config = check_load_R('./models/{}'.format(ds))
             model_R = load_model_R(config)
         models_G.append(model_G)
         models_R.append(model_R)
@@ -318,12 +323,13 @@ if __name__ == '__main__':
     color_domain += 255  # turn white
     output = np.zeros(color_domain.shape, np.uint8)  # output image to be shown
 
-    MODE = buttonbox("Choose your model image:\n 1:draw from empty \n 2:draw from color_domain and edge \n 3:draw from pic",
-                     choices=("1", "2", "3", "cancel"),
+    # MODE = buttonbox("Choose your model image:\n 1:draw from empty \n 2:draw from color_domain and edge \n 3:draw from pic",
+    #                  choices=("1", "2", "3", "cancel"),
+    #                  title="PI-REC")
+    MODE = buttonbox("Choose your model image:\n 1: draw from color_domain and edge \n 2: draw from pic",
+                     choices=("1", "2",  "cancel"),
                      title="PI-REC")
     if MODE == "1":
-        pass
-    elif MODE == "2":
         msgbox("Choose an edge picture", title="PI-REC")
         edge_file = fileopenbox(msg='Select an edge', title='PI-REC', filetypes=[['*.png', '*.jpg', 'Image Files']])
         if not edge_file.endswith('.jpg') and not edge_file.endswith('.png'):
@@ -335,7 +341,7 @@ if __name__ == '__main__':
             exit("color_domain file must be .jpg or .png")
         edge, color_domain = inital_pics(edge_file, color_domain_file)
         # print(edge.shape, color_domain.shape, type(edge), type(color_domain))
-    elif MODE == "3":
+    elif MODE == "2":
         msgbox("Choose a colorful picture", title="PI-REC")
         pic_file = fileopenbox(msg='Select an edge', title='PI-REC', filetypes=[['*.png', '*.jpg', 'Image Files']])
         if not pic_file.endswith('.jpg') and not pic_file.endswith('.png'):
@@ -345,9 +351,15 @@ if __name__ == '__main__':
         # print(edge[64])
     else:
         exit(0)
-        
-    MODEL = buttonbox("Choose your model:\n 1: Asian \n 2: Non Asian \n 3: Anime \n 4: Pixiv \n 5: Webtoon",
-                     choices=("1", "2", "3", "4", "5", "cancel"),
+    
+    text = "Choose your model:\n 1: Asian \n 2: Non Asian \n 3: Anime \n 4: Pixiv \n 5: Webtoon"
+    choices = ["1", "2", "3", "4", "5"]
+    if add_prev:
+        text += '\n 6: Celeba \n 2: Getchu Anime'
+        choices += ["6", "7"]
+    print(text, choices)
+    MODEL = buttonbox(text,
+                     choices=tuple(choices),
                      title="PI-REC")
     if MODEL == "1":
         model_G = models_G[0]
@@ -364,6 +376,12 @@ if __name__ == '__main__':
     elif MODEL == "5":
         model_G = models_G[4]
         model_R = models_R[4]
+    elif MODEL == "6":
+        model_G = models_G[5]
+        model_R = models_R[5]
+    elif MODEL == "7":
+        model_G = models_G[6]
+        model_R = models_R[6]
     else:
         exit(0)
         
@@ -414,8 +432,7 @@ if __name__ == '__main__':
             drawing_edge_r = False
             drawing_color_domain_l = False
             drawing_color_domain_r = False
-            if MODE == "2":
-                edge, color_domain = inital_pics(edge_file, color_domain_file)
+            edge, color_domain = inital_colorful_pic(pic_file, args.canny, args.kmeans)
 
         # elif k == ord('n'):  # begin to path the image
         #     print('\ncolor_domain cleared')
@@ -463,6 +480,14 @@ if __name__ == '__main__':
                 # cv.imwrite(path, cv.resize(edge,(128,128),interpolation=cv.INTER_NEAREST))
                 cv.imwrite(path, edge)
                 print('Drawing edge is saved to', path)
+        elif k == ord('m'):
+            path = filesavebox('save', 'save the color domain.', default='draw_color_domain.png',
+                               filetypes=[['*.jpg', 'jpg'], ['*.png', 'png']])
+            if path:
+                if not path.endswith('.jpg') and not path.endswith('.png'):
+                    path = str(path) + '.png'
+                cv.imwrite(path, cv.add(temp_edge, color_domain, mask=255 - edge))
+                print('Drawing color domain is saved to', path)
         elif k == ord('h'):
             msgbox(__doc__, title="PI-REC")
         elif k == ord('u'):
@@ -475,6 +500,36 @@ if __name__ == '__main__':
         elif k == ord('e'):
             eraser_mode = not eraser_mode
         elif k == ord('z'):
-            eraser_mode = not eraser_mode
+            text = "Choose your model:\n 1: Asian \n 2: Non Asian \n 3: Anime \n 4: Pixiv \n 5: Webtoon"
+            choices = ["1", "2", "3", "4", "5"]
+            if add_prev:
+                text += '\n 6: Celeba \n 2: Getchu Anime'
+                choices += ["6", "7"]
+            print(text, choices)
+            MODEL = buttonbox(text,
+                            choices=tuple(choices),
+                            title="PI-REC")
+            if MODEL == "1":
+                model_G = models_G[0]
+                model_R = models_R[0]
+            elif MODEL == "2":
+                model_G = models_G[1]
+                model_R = models_R[1]
+            elif MODEL == "3":
+                model_G = models_G[2]
+                model_R = models_R[2]
+            elif MODEL == "4":
+                model_G = models_G[3]
+                model_R = models_R[3]
+            elif MODEL == "5":
+                model_G = models_G[4]
+                model_R = models_R[4]
+            elif MODEL == "6":
+                model_G = models_G[5]
+                model_R = models_R[5]
+            elif MODEL == "7":
+                model_G = models_G[6]
+                model_R = models_R[6]
+            output = model_process(color_domain, edge)
 
     cv.destroyAllWindows()

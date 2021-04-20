@@ -18,12 +18,13 @@ class Config(dict):
         return None
 
     def print(self):
-        print('Model configurations:')
-        print('---------------------------------')
-        print(self._yaml)
-        print('')
-        print('---------------------------------')
-        print('')
+        pass
+        # print('Model configurations:')
+        # print('---------------------------------')
+        # print(self._yaml)
+        # print('')
+        # print('---------------------------------')
+        # print('')
 
 
 DEFAULT_CONFIG = {

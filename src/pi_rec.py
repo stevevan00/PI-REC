@@ -213,7 +213,7 @@ class PiRec():
     def refine(self, img_blur, edge):
         self.r_model.eval()
         size = self.config.INPUT_SIZE
-        # color_domain = resize(color_domain, size, size, interp='lanczos')
+        img_blur = resize(img_blur, size, size, interp='lanczos')
         edge = resize(edge, size, size, interp='lanczos')
         edge[edge <= 69] = 0
         edge[edge > 69] = 255
