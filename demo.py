@@ -6,6 +6,7 @@ from PyQt5.QtPrintSupport import QPrintDialog, QPrinter
 from ui.ui import Ui_Form
 from ui.mouse_event import GraphicsScene
 from ui.functions import *
+from ui.photoviewer import PhotoWindow
 import numpy as np
 # from utils.config import Config
 # from model import Model
@@ -27,7 +28,6 @@ class Ex(QWidget, Ui_Form):
         self.models_R = models_R
         self.model_R = self.models_R[0]
         self.datasets = ['Asian', 'Non_Asian', 'Anime', 'Pixiv', 'Webtoon']
-        # self.model.load_demo_graph(config)
 
         self.output_img = None
 
@@ -205,8 +205,8 @@ class Ex(QWidget, Ui_Form):
         if type(self.output_img):
             fileName, _ = QFileDialog.getSaveFileName(self, "Save File",
                     QDir.currentPath())
-            print(fileName)
-            cv2.imwrite(fileName+'.png',self.output_img)
+            if fileName:
+                cv2.imwrite(fileName+'.png',self.output_img)
         else:
             buttonReply = QMessageBox.question(self, 'Error', "Please click generate to activate save image", QMessageBox.Yes, QMessageBox.Yes)
             if buttonReply == QMessageBox.Yes:
@@ -245,7 +245,18 @@ class Ex(QWidget, Ui_Form):
         ind = ds[0]
         self.model_G = self.models_G[ind]
         self.model_R = self.models_R[ind]
-        
+    
+    def open_viewer(self):
+        if type(self.output_img):
+            cv2.imwrite('./temp/output.png',self.output_img)
+            self.window = PhotoWindow()
+            self.window.setGeometry(500, 300, 800, 600)
+            self.window.show()
+        else:
+            buttonReply = QMessageBox.question(self, 'Error', "Please click generate to activate save image", QMessageBox.Yes, QMessageBox.Yes)
+            if buttonReply == QMessageBox.Yes:
+                print('Yes clicked.')    
+                
 if __name__ == '__main__':
     # config = Config('demo.yaml')
     # os.environ["CUDA_VISIBLE_DEVICES"] = str(config.GPU_NUM)
