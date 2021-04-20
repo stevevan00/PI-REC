@@ -58,6 +58,12 @@ class Ui_Form(object):
         self.saveImg = QtWidgets.QPushButton(Form)
         self.saveImg.setGeometry(QtCore.QRect(610, 10, 97, 27))
         self.saveImg.setObjectName("saveImg")
+        
+        self.comboModel = QtWidgets.QComboBox(self)
+        for d in ['Asian', 'Non_Asian', 'Anime', 'Pixiv', 'Webtoon']:
+            self.comboModel.addItem(d)
+        self.comboModel.setGeometry(QtCore.QRect(610, 30, 97, 27))
+        self.comboModel.setObjectName("comboModel")
 
         self.retranslateUi(Form)
         self.pushButton.clicked.connect(Form.open)
@@ -73,7 +79,7 @@ class Ui_Form(object):
         self.pushButton_11.clicked.connect(Form.sketch_undo)
 
         self.saveImg.clicked.connect(Form.save_img)
-
+        self.comboModel.activated[str].connect(self.onComboChanged)
 
         QtCore.QMetaObject.connectSlotsByName(Form)
 
@@ -93,7 +99,7 @@ class Ui_Form(object):
         self.pushButton_11.setText(_translate("Form", "Undo Sketch"))
 
         self.saveImg.setText(_translate("Form", "Save Img"))
-
+        
 
 if __name__ == "__main__":
     import sys

@@ -23,9 +23,10 @@ class Ex(QWidget, Ui_Form):
         self.setupUi(self)
         self.show()
         self.models_G = models_G
-        self.model_G = self.models_G[2]
+        self.model_G = self.models_G[0]
         self.models_R = models_R
-        self.model_R = self.models_R[2]
+        self.model_R = self.models_R[0]
+        self.datasets = ['Asian', 'Non_Asian', 'Anime', 'Pixiv', 'Webtoon']
         # self.model.load_demo_graph(config)
 
         self.output_img = None
@@ -239,6 +240,12 @@ class Ex(QWidget, Ui_Form):
         qcolor_domain = cvImage2QImage(new_color_domain)
         self.color_scene.addPixmap(QPixmap(qcolor_domain))
 
+    def onComboChanged(self, text):
+        ds = [i for i, value in enumerate(self.datasets) if value == text]
+        ind = ds[0]
+        self.model_G = self.models_G[ind]
+        self.model_R = self.models_R[ind]
+        
 if __name__ == '__main__':
     # config = Config('demo.yaml')
     # os.environ["CUDA_VISIBLE_DEVICES"] = str(config.GPU_NUM)
@@ -253,17 +260,17 @@ if __name__ == '__main__':
 
     # check the exist of path and the weights files
     datasets = ['Asian', 'Non_Asian', 'Anime', 'Pixiv', 'Webtoon']
+    # datasets = ['Anime']
     models_G = []
     models_R = []
     
     for ds in datasets:
         config = check_load_G('./models/{}'.format(ds))
         model_G = load_model_G(config)
-        model_R = None
 
-        if args.refinement:
-            config = check_load_R('./models/{}'.format(ds))
-            model_R = load_model_R(config)
+        config = check_load_R('./models/{}'.format(ds))
+        model_R = load_model_R(config)
+        
         models_G.append(model_G)
         models_R.append(model_R)
 
