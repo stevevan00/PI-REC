@@ -43,12 +43,14 @@ class Ex(QWidget, Ui_Form):
         self.graphicsView.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         self.graphicsView.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.graphicsView.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.graphicsView.setCursor(QCursor(Qt.CrossCursor))
 
         self.color_scene = GraphicsScene(self.modes, sketch=False)
         self.graphicsView_2.setScene(self.color_scene)
         self.graphicsView_2.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         self.graphicsView_2.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.graphicsView_2.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.graphicsView_2.setCursor(QCursor(Qt.CrossCursor))
         
         self.result_scene = QGraphicsScene()
         self.graphicsView_3.setScene(self.result_scene)
@@ -65,8 +67,9 @@ class Ex(QWidget, Ui_Form):
         self.modes[mode] = 1
 
     def open(self):
-        fileName, _ = QFileDialog.getOpenFileName(self, "Open File",
-                QDir.currentPath())
+        # fileName, _ = QFileDialog.getOpenFileName(self, "Open File",
+        #         QDir.currentPath())
+        fileName = './examples/draw_output.png'
         self.fileName = fileName
         if fileName:
             image = QPixmap(fileName)
