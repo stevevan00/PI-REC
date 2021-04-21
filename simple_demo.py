@@ -170,9 +170,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                      
     def open_image(self):
         if not self.clearMode:
-            # fileName, _ = QFileDialog.getOpenFileName(self, "Open File",
-            #         QDir.currentPath())
-            fileName = './examples/draw_output.png'
+            fileName, _ = QFileDialog.getOpenFileName(self, "Open File",
+                    QDir.currentPath())
+            # fileName = './examples/draw_output.png'
             self.fileName = fileName
         if self.fileName:
             image = QPixmap(self.fileName)
@@ -237,26 +237,30 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     
     def update_color_dominant(self):
         img = self.color_domain
-        
-        #convert to rgb from bgr
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                
-        #reshaping to a list of pixels
-        img = img.reshape((img.shape[0] * img.shape[1], 3))
-        
-        from sklearn.cluster import KMeans
-        #using k-means to cluster pixels
-        kmeans = KMeans(n_clusters = self.CLUSTERS)
-        kmeans.fit(img)
-        
-        #the cluster centers are our dominant colors.
-        self.COLORS = kmeans.cluster_centers_
-        
-        #save labels
-        self.LABELS = kmeans.labels_
+        Z = img.reshape((-1, 3))
+
+        # convert to np.float32
+        Z = np.float32(Z)
+
+        # define criteria, number of clusters(K) and apply kmeans()
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+        # K = 8
+        ret, label, center = cv2.kmeans(Z, 4, None, criteria, 8, cv2.KMEANS_PP_CENTERS)
+
+        # Now convert back into uint8, and make original image
+        center = np.uint8(center)
         
         #returning after converting to integer from float
-        print('Color Domain',self.COLORS.astype(int))
+        from colorutils import Color, rgb_to_hex
+        # print('Color Domain',center)
+        for i in range(1,5):
+            btn = getattr(self, 'dominantColor_{}'.format(i))
+            btn.setStyleSheet('')
+            
+        for index, color in enumerate(center):
+            btn = getattr(self, 'dominantColor_{}'.format(index+1))
+            hex = rgb_to_hex(tuple(color[::-1]))
+            btn.setStyleSheet('QPushButton { background-color: %s; }' % hex)
     
     def button_disabled(self, attrs):
         for attr in attrs:
