@@ -39,16 +39,15 @@ FONT_SIZES = [7, 8, 9, 10, 11, 12, 13, 14, 18, 24, 36, 48, 64, 72, 96, 144, 288]
 
 MODES = [
     'selectpoly', 'selectrect',
-    'eraser', 'fill',
-    'dropper', 'stamp',
+    'eraser',
+    'dropper',
     'pen', 'brush',
-    'spray', 'text',
-    'line', 'polyline',
-    'rect', 'polygon',
-    'ellipse', 'roundrect'
+    'spray',
+    'line', 'rect',
+    'ellipse',
 ]
 
-CANVAS_DIMENSIONS = 600, 400
+CANVAS_DIMENSIONS = 176, 176
 
 STAMPS = [
     ':/stamps/pie-apple.png',
@@ -692,10 +691,13 @@ class Canvas(QLabel):
 
 class DesignerWindow(QMainWindow, Ui_MainWindow):
 
-    def __init__(self, *args, **kwargs):
+    _signal = QtCore.pyqtSignal(str)
+    # mode == 0 -> sketch, 1 -> color
+    def __init__(self,mode, *args, **kwargs):
         super(DesignerWindow, self).__init__(*args, **kwargs)
         self.setupUi(self)
-
+        self.mode = mode
+        self.path = None
         # Replace canvas placeholder from QtDesigner.
         self.horizontalLayout.removeWidget(self.canvas)
         self.canvas = Canvas()
@@ -705,6 +707,10 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
         # Enable focus to capture key inputs.
         self.canvas.setFocusPolicy(Qt.StrongFocus)
         self.horizontalLayout.addWidget(self.canvas)
+        # self.fileToolbar.hide()
+        self.actionNewImage.setVisible(False)
+        self.actionOpenImage.setVisible(False)
+        self.menuBar.hide()
 
         # Setup the mode buttons
         mode_group = QButtonGroup(self)
@@ -720,19 +726,24 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
         self.secondaryButton.pressed.connect(lambda: self.choose_color(self.set_secondary_color))
 
         # Initialize button colours.
-        for n, hex in enumerate(COLORS, 1):
-            btn = getattr(self, 'colorButton_%d' % n)
-            btn.setStyleSheet('QPushButton { background-color: %s; }' % hex)
-            btn.hex = hex  # For use in the event below
+        if self.mode == 0:
+            for n, hex in enumerate(COLORS, 1):
+                btn = getattr(self, 'colorButton_%d' % n)
+                btn.hide()
+        elif self.mode == 1:
+            for n, hex in enumerate(COLORS, 1):
+                btn = getattr(self, 'colorButton_%d' % n)
+                btn.setStyleSheet('QPushButton { background-color: %s; }' % hex)
+                btn.hex = hex  # For use in the event below
 
-            def patch_mousePressEvent(self_, e):
-                if e.button() == Qt.LeftButton:
-                    self.set_primary_color(self_.hex)
+                def patch_mousePressEvent(self_, e):
+                    if e.button() == Qt.LeftButton:
+                        self.set_primary_color(self_.hex)
 
-                elif e.button() == Qt.RightButton:
-                    self.set_secondary_color(self_.hex)
+                    elif e.button() == Qt.RightButton:
+                        self.set_secondary_color(self_.hex)
 
-            btn.mousePressEvent = types.MethodType(patch_mousePressEvent, btn)
+                btn.mousePressEvent = types.MethodType(patch_mousePressEvent, btn)
 
         # Setup up action signals
         self.actionCopy.triggered.connect(self.copy_to_clipboard)
@@ -765,27 +776,6 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
         self.actionFlipHorizontal.triggered.connect(self.flip_horizontal)
         self.actionFlipVertical.triggered.connect(self.flip_vertical)
 
-        # Setup the drawing toolbar.
-        self.fontselect = QFontComboBox()
-        self.fontToolbar.addWidget(self.fontselect)
-        self.fontselect.currentFontChanged.connect(lambda f: self.canvas.set_config('font', f))
-        self.fontselect.setCurrentFont(QFont('Times'))
-
-        self.fontsize = QComboBox()
-        self.fontsize.addItems([str(s) for s in FONT_SIZES])
-        self.fontsize.currentTextChanged.connect(lambda f: self.canvas.set_config('fontsize', int(f)))
-
-        # Connect to the signal producing the text of the current selection. Convert the string to float
-        # and set as the pointsize. We could also use the index + retrieve from FONT_SIZES.
-        self.fontToolbar.addWidget(self.fontsize)
-
-        self.fontToolbar.addAction(self.actionBold)
-        self.actionBold.triggered.connect(lambda s: self.canvas.set_config('bold', s))
-        self.fontToolbar.addAction(self.actionItalic)
-        self.actionItalic.triggered.connect(lambda s: self.canvas.set_config('italic', s))
-        self.fontToolbar.addAction(self.actionUnderline)
-        self.actionUnderline.triggered.connect(lambda s: self.canvas.set_config('underline', s))
-
         sizeicon = QLabel()
         sizeicon.setPixmap(QPixmap(':/icons/border-weight.png'))
         self.drawingToolbar.addWidget(sizeicon)
@@ -799,6 +789,7 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
         self.drawingToolbar.addAction(self.actionFillShapes)
         self.actionFillShapes.setChecked(True)
 
+        self.open_file_mode()
         self.show()
 
     def choose_color(self, callback):
@@ -836,6 +827,41 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
         else:
             clipboard.setPixmap(self.canvas.pixmap())
 
+    def open_file_mode(self):
+        """
+        Open image file for editing, scaling the smaller dimension and cropping the remainder.
+        :return:
+        """
+        
+        path = './temp/sketch.png' if self.mode == 0 else './temp/color_domain_sketch.png'
+        if path:
+            pixmap = QPixmap()
+            pixmap.load(path)
+
+            # We need to crop down to the size of our canvas. Get the size of the loaded image.
+            iw = pixmap.width()
+            ih = pixmap.height()
+
+            # Get the size of the space we're filling.
+            cw, ch = CANVAS_DIMENSIONS
+
+            if iw/cw < ih/ch:  # The height is relatively bigger than the width.
+                pixmap = pixmap.scaledToWidth(cw)
+                hoff = (pixmap.height() - ch) // 2
+                pixmap = pixmap.copy(
+                    QRect(QPoint(0, hoff), QPoint(cw, pixmap.height()-hoff))
+                )
+
+            elif iw/cw > ih/ch:  # The height is relatively bigger than the width.
+                pixmap = pixmap.scaledToHeight(ch)
+                woff = (pixmap.width() - cw) // 2
+                pixmap = pixmap.copy(
+                    QRect(QPoint(woff, 0), QPoint(pixmap.width()-woff, ch))
+                )
+
+            self.canvas.setPixmap(pixmap)
+
+    
     def open_file(self):
         """
         Open image file for editing, scaling the smaller dimension and cropping the remainder.
@@ -876,11 +902,13 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
         Save active canvas to image file.
         :return:
         """
-        path, _ = QFileDialog.getSaveFileName(self, "Save file", "", "PNG Image file (*.png)")
+        # path, _ = QFileDialog.getSaveFileName(self, "Save file", "", "PNG Image file (*.png)")
 
-        if path:
-            pixmap = self.canvas.pixmap()
-            pixmap.save(path, "PNG" )
+        # if path:
+        self.path = './temp/designer_{}.png'.format('sketch' if self.mode == 0 else 'color_domain')
+        pixmap = self.canvas.pixmap()
+        pixmap.save(self.path, "PNG")
+        self.close()
 
     def invert(self):
         img = QImage(self.canvas.pixmap())
@@ -897,6 +925,10 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
         pixmap = self.canvas.pixmap()
         self.canvas.setPixmap(pixmap.transformed(QTransform().scale(1, -1)))
 
+    def closeEvent(self, event):
+        if self.path:
+            self._signal.emit(self.path)
+        # self.close()
 
 
 if __name__ == '__main__':

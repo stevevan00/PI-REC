@@ -40,6 +40,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.outputImg = None
         self.fileName = None
         self.clearMode = False
+        self.input_size = 176
         # check the exist of path and the weights files
         self.datasets = ['Asian', 'Non_Asian', 'Anime', 'Pixiv', 'Webtoon']
         self.models_G = []
@@ -68,18 +69,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         
         
         #sketch button
+        self.designerSketchBtn.clicked.connect(self.open_sketch_designer)
         self.viewerSketchBtn.clicked.connect(self.open_sketch_viewer)
-        self.saveSketchBtn.clicked.connect(self.save_sketch_viewer)
+        self.saveSketchBtn.clicked.connect(self.save_sketch)
         
         #color button
+        self.designerColorBtn.clicked.connect(self.open_color_designer)
         self.viewerColorBtn.clicked.connect(self.open_color_viewer)
-        self.saveColorBtn.clicked.connect(self.save_color_viewer)
+        self.saveColorBtn.clicked.connect(self.save_color)
         
         #result button
         self.reconstructBtn.clicked.connect(self.reconstruct_image)
         self.refinementBtn.clicked.connect(self.refine_image)
         self.viewerOutputBtn.clicked.connect(self.open_output_viewer)
-        self.saveOutputBtn.clicked.connect(self.save_output_viewer)
+        self.saveOutputBtn.clicked.connect(self.save_output)
     
     def reconstruct_image(self):
         # self.edge = self.make_sketch(self.edge, self.sketch_scene.sketch_points)
@@ -105,8 +108,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         print("\nFinished!")
         
     def open_sketch_viewer(self):
-        # self.canvasWindow = MainWindow()
-        # self.canvasWindow.show()
         path = './temp/sketch.png'
         if type(self.edge):
             cv2.imwrite(path,self.edge)
@@ -119,8 +120,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 print('Yes clicked.')   
                 
     def open_color_viewer(self):
-        # self.canvasWindow = MainWindow()
-        # self.canvasWindow.show()
         path = './temp/color_domain.png'
         if type(self.color_domain):
             cv2.imwrite(path,self.color_domain)
@@ -133,8 +132,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 print('Yes clicked.')    
                            
     def open_output_viewer(self):
-        # self.canvasWindow = MainWindow()
-        # self.canvasWindow.show()
         path = './temp/output.png'
         if type(self.outputImg):
             cv2.imwrite(path,self.outputImg)
@@ -146,21 +143,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if buttonReply == QMessageBox.Yes:
                 print('Yes clicked.')    
     
-    def save_sketch_viewer(self):
+    def save_sketch(self):
         if type(self.edge):
             fileName, _ = QFileDialog.getSaveFileName(self, "Save File",
                     QDir.currentPath())
             if fileName:
                 cv2.imwrite(fileName+'.png',self.edge)
                 
-    def save_color_viewer(self):
+    def save_color(self):
         if type(self.color_domain):
             fileName, _ = QFileDialog.getSaveFileName(self, "Save File",
                     QDir.currentPath())
             if fileName:
                 cv2.imwrite(fileName+'.png',self.color_domain)
                 
-    def save_output_viewer(self):
+    def save_output(self):
         if type(self.outputImg):
             fileName, _ = QFileDialog.getSaveFileName(self, "Save File",
                     QDir.currentPath())
@@ -236,6 +233,30 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             scene = QGraphicsScene(self)
             scene.addPixmap(self.image)
             self.outputGraphicsView.setScene(scene)
+        self.update_color_dominant()
+    
+    def update_color_dominant(self):
+        img = self.color_domain
+        
+        #convert to rgb from bgr
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                
+        #reshaping to a list of pixels
+        img = img.reshape((img.shape[0] * img.shape[1], 3))
+        
+        from sklearn.cluster import KMeans
+        #using k-means to cluster pixels
+        kmeans = KMeans(n_clusters = self.CLUSTERS)
+        kmeans.fit(img)
+        
+        #the cluster centers are our dominant colors.
+        self.COLORS = kmeans.cluster_centers_
+        
+        #save labels
+        self.LABELS = kmeans.labels_
+        
+        #returning after converting to integer from float
+        print('Color Domain',self.COLORS.astype(int))
     
     def button_disabled(self, attrs):
         for attr in attrs:
@@ -286,7 +307,37 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if type(self.outputImg):
             self.outputImg = cv2.flip(self.outputImg, 0)
         self.update_views()
-        
+    
+    def open_sketch_designer(self):
+        path = './temp/sketch.png'
+        cv2.imwrite(path,self.edge)
+        self.canvasWindow = DesignerWindow(mode=0)
+        self.canvasWindow.show()
+        self.canvasWindow._signal.connect(self.on_close_sketch_designer)
+            
+    def open_color_designer(self):
+        path = './temp/color_domain_sketch.png'
+        new_color_domain = self.concat_sketch_color(self.edge, self.color_domain)
+        cv2.imwrite(path,new_color_domain)
+        self.canvasWindow = DesignerWindow(mode=1)
+        self.canvasWindow.show() 
+        self.canvasWindow._signal.connect(self.on_close_color_designer)
+    
+    def on_close_sketch_designer(self, path):
+        edge = cv2.imread(path)
+        edge = cv2.resize(edge, (self.input_size, self.input_size), interpolation=cv2.INTER_LANCZOS4)
+        edge[edge <= 59] = 0
+        edge[edge > 59] = 255
+        self.edge = edge
+        self.update_views()
+        print(path)
+    
+    def on_close_color_designer(self, path):
+        color_domain = cv2.imread(path)
+        self.color_domain = cv2.resize(color_domain, (self.input_size, self.input_size), interpolation=cv2.INTER_LANCZOS4)
+        self.update_views()
+        print(path)
+                                
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     application = MainWindow()
