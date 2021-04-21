@@ -7,6 +7,7 @@ from ui.ui import Ui_Form
 from ui.mouse_event import GraphicsScene
 from ui.functions import *
 from ui.photoviewer import PhotoWindow
+from ui.designer.paint import MainWindow
 import numpy as np
 # from utils.config import Config
 # from model import Model
@@ -17,7 +18,7 @@ import argparse
 
 WIN_SIZE = 176
 
-class Ex(QWidget, Ui_Form):
+class Ex(QMainWindow, Ui_Form):
     # def __init__(self, model, config):
     def __init__(self, models_G, models_R):
         super().__init__()
@@ -250,6 +251,8 @@ class Ex(QWidget, Ui_Form):
         self.model_R = self.models_R[ind]
     
     def open_viewer(self):
+        # self.canvasWindow = MainWindow()
+        # self.canvasWindow.show()
         if type(self.output_img):
             cv2.imwrite('./temp/output.png',self.output_img)
             self.window = PhotoWindow()

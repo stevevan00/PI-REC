@@ -1,0 +1,294 @@
+
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
+
+from ui.functions import *
+from ui.photoviewer import PhotoWindow
+from ui.designer.paint import DesignerWindow
+from MainWindow import Ui_MainWindow
+import sys
+
+sketchButtons = [
+    'designerSketchBtn',
+    'viewerSketchBtn',
+    'saveSketchBtn'
+]
+
+colorButtons = [
+    'dominantColor_1',
+    'dominantColor_2',
+    'dominantColor_3',
+    'dominantColor_4',
+    'designerColorBtn',
+    'viewerColorBtn',
+    'saveColorBtn'
+]
+
+outputButtons = [
+    'reconstructBtn',
+    'refinementBtn',
+    'viewerOutputBtn',
+    'saveOutputBtn'
+]
+
+class MainWindow(QMainWindow, Ui_MainWindow):
+    def __init__(self, *args, **kwargs):
+        super(MainWindow, self).__init__(*args, **kwargs)
+        self.setupUi(self)
+        
+        self.outputImg = None
+        self.fileName = None
+        self.clearMode = False
+        # check the exist of path and the weights files
+        self.datasets = ['Asian', 'Non_Asian', 'Anime', 'Pixiv', 'Webtoon']
+        self.models_G = []
+        self.models_R = []
+        for ds in self.datasets:
+            config = check_load_G('./models/{}'.format(ds))
+            model_G = load_model_G(config)
+
+            config = check_load_R('./models/{}'.format(ds))
+            model_R = load_model_R(config)
+            
+            self.models_G.append(model_G)
+            self.models_R.append(model_R)
+        self.model_G = self.models_G[0]
+        self.model_R = self.models_R[0]
+        
+        # Add item to combobox
+        for d in ['Asian', 'Non_Asian', 'Anime', 'Pixiv', 'Webtoon']:
+            self.modelCombo.addItem(d)
+        self.modelCombo.activated[str].connect(self.on_model_changed)
+        
+        self.actionOpen_Image.triggered.connect(self.open_image)
+        self.actionReset_Image.triggered.connect(self.reset)
+        self.actionFlip_Horizontal.triggered.connect(self.flip_image_horizontal)
+        self.actionFlip_Vertical.triggered.connect(self.flip_image_vertical)
+        
+        
+        #sketch button
+        self.viewerSketchBtn.clicked.connect(self.open_sketch_viewer)
+        self.saveSketchBtn.clicked.connect(self.save_sketch_viewer)
+        
+        #color button
+        self.viewerColorBtn.clicked.connect(self.open_color_viewer)
+        self.saveColorBtn.clicked.connect(self.save_color_viewer)
+        
+        #result button
+        self.reconstructBtn.clicked.connect(self.reconstruct_image)
+        self.refinementBtn.clicked.connect(self.refine_image)
+        self.viewerOutputBtn.clicked.connect(self.open_output_viewer)
+        self.saveOutputBtn.clicked.connect(self.save_output_viewer)
+    
+    def reconstruct_image(self):
+        # self.edge = self.make_sketch(self.edge, self.sketch_scene.sketch_points)
+        # self.color_domain = self.make_stroke(self.color_domain, self.color_scene.stroke_points)
+            
+        print("\nDrawing using color domain and edge...")
+        edge = cv2.cvtColor(self.edge, cv2.COLOR_BGR2GRAY)
+        # color_domain = cv2.cvtColor(self.color_domain, cv2.COLOR_BGR2RGB)
+        color_domain = self.color_domain
+        cv2.imwrite('./temp/edge.png', edge)
+        cv2.imwrite('./temp/color_domain.png', color_domain)
+        self.outputImg = model_process(self.model_G, color_domain, edge)
+        
+        self.update_views()
+        self.button_enabled(outputButtons)
+        print("\nFinished!")
+    
+    def refine_image(self):
+        edge = cv2.cvtColor(self.edge, cv2.COLOR_BGR2GRAY)
+        self.outputImg = model_refine(self.model_R, self.outputImg, edge)
+        
+        self.update_views()
+        print("\nFinished!")
+        
+    def open_sketch_viewer(self):
+        # self.canvasWindow = MainWindow()
+        # self.canvasWindow.show()
+        path = './temp/sketch.png'
+        if type(self.edge):
+            cv2.imwrite(path,self.edge)
+            self.window = PhotoWindow(path=path)
+            self.window.setGeometry(500, 300, 800, 600)
+            self.window.show()
+        else:
+            buttonReply = QMessageBox.question(self, 'Error', "No Image detected", QMessageBox.Yes, QMessageBox.Yes)
+            if buttonReply == QMessageBox.Yes:
+                print('Yes clicked.')   
+                
+    def open_color_viewer(self):
+        # self.canvasWindow = MainWindow()
+        # self.canvasWindow.show()
+        path = './temp/color_domain.png'
+        if type(self.color_domain):
+            cv2.imwrite(path,self.color_domain)
+            self.window = PhotoWindow(path=path)
+            self.window.setGeometry(500, 300, 800, 600)
+            self.window.show()
+        else:
+            buttonReply = QMessageBox.question(self, 'Error', "No Image detected", QMessageBox.Yes, QMessageBox.Yes)
+            if buttonReply == QMessageBox.Yes:
+                print('Yes clicked.')    
+                           
+    def open_output_viewer(self):
+        # self.canvasWindow = MainWindow()
+        # self.canvasWindow.show()
+        path = './temp/output.png'
+        if type(self.outputImg):
+            cv2.imwrite(path,self.outputImg)
+            self.window = PhotoWindow(path=path)
+            self.window.setGeometry(500, 300, 800, 600)
+            self.window.show()
+        else:
+            buttonReply = QMessageBox.question(self, 'Error', "Please click generate to activate save image", QMessageBox.Yes, QMessageBox.Yes)
+            if buttonReply == QMessageBox.Yes:
+                print('Yes clicked.')    
+    
+    def save_sketch_viewer(self):
+        if type(self.edge):
+            fileName, _ = QFileDialog.getSaveFileName(self, "Save File",
+                    QDir.currentPath())
+            if fileName:
+                cv2.imwrite(fileName+'.png',self.edge)
+                
+    def save_color_viewer(self):
+        if type(self.color_domain):
+            fileName, _ = QFileDialog.getSaveFileName(self, "Save File",
+                    QDir.currentPath())
+            if fileName:
+                cv2.imwrite(fileName+'.png',self.color_domain)
+                
+    def save_output_viewer(self):
+        if type(self.outputImg):
+            fileName, _ = QFileDialog.getSaveFileName(self, "Save File",
+                    QDir.currentPath())
+            if fileName:
+                cv2.imwrite(fileName+'.png',self.outputImg)
+        else:
+            buttonReply = QMessageBox.question(self, 'Error', "Please click reconstruct to activate save image", QMessageBox.Yes, QMessageBox.Yes)
+            if buttonReply == QMessageBox.Yes:
+                print('Yes clicked.')   
+                     
+    def open_image(self):
+        if not self.clearMode:
+            # fileName, _ = QFileDialog.getOpenFileName(self, "Open File",
+            #         QDir.currentPath())
+            fileName = './examples/draw_output.png'
+            self.fileName = fileName
+        if self.fileName:
+            image = QPixmap(self.fileName)
+            if image.isNull():
+                QMessageBox.information(self, "Image Viewer",
+                        "Cannot load %s." % self.fileName)
+                return
+
+            self.image = image.scaled(self.sketchGraphicsView.size(), Qt.IgnoreAspectRatio)
+
+            
+            edge, color_domain = initial_colorful_pic(self.fileName, 2,10)
+            # edge = np.expand_dims(edge,axis=2)
+            edge = cv2.cvtColor(edge,cv2.COLOR_GRAY2BGR)
+            self.edge = edge
+            self.color_domain = color_domain
+            
+            # if len(self.outputGraphicsView.items())>0:
+            #     for i in range(len(self.outputGraphicsView.items())):
+            #         self.outputGraphicsView.removeItem(self.outputGraphicsView.items()[-1])
+                
+            self.update_views()
+            self.button_enabled(sketchButtons)
+            self.button_enabled(colorButtons)
+            self.button_enabled(outputButtons[:1])
+            self.button_disabled(outputButtons[1:])
+            
+    def update_views(self):
+        edge, color_domain = self.edge, self.color_domain
+        # self.sketchGraphicsView.reset()
+        # if len(self.sketchGraphicsView.items())>0:
+        #     self.sketchGraphicsView.reset_items()
+        qedge = cvImage2QImage(edge)
+        scene = QGraphicsScene(self)
+        scene.addPixmap(QPixmap(qedge))
+        self.sketchGraphicsView.setScene(scene)
+        
+        # self.colorGraphicsView.reset()
+        # if len(self.colorGraphicsView.items())>0:
+        #     self.colorGraphicsView.reset_items()
+        
+        new_color_domain = self.concat_sketch_color(edge, color_domain)
+        qcolor_domain = cvImage2QImage(new_color_domain)
+        scene = QGraphicsScene(self)
+        scene.addPixmap(QPixmap(qcolor_domain))
+        self.colorGraphicsView.setScene(scene)
+            
+        # if len(self.outputGraphicsView.items())>0:
+        #     self.outputGraphicsView.removeItem(self.outputGraphicsView.items()[-1])
+            
+        if self.outputImg is not None:
+            result = self.outputImg
+            qim = QImage(result.data, result.shape[1], result.shape[0], result.strides[0], QImage.Format_BGR888)
+            scene = QGraphicsScene(self)
+            scene.addPixmap(QPixmap.fromImage(qim))
+            self.outputGraphicsView.setScene(scene)
+        else:
+            scene = QGraphicsScene(self)
+            scene.addPixmap(self.image)
+            self.outputGraphicsView.setScene(scene)
+    
+    def button_disabled(self, attrs):
+        for attr in attrs:
+            btn = getattr(self, attr)
+            btn.setEnabled(False)
+    
+    def button_enabled(self, attrs):
+        for attr in attrs:
+            btn = getattr(self, attr)
+            btn.setEnabled(True)    
+                        
+    def on_model_changed(self, text):
+        ds = [i for i, value in enumerate(self.datasets) if value == text]
+        ind = ds[0]
+        self.model_G = self.models_G[ind]
+        self.model_R = self.models_R[ind]
+    
+    def concat_sketch_color(self, edge, color, invert=True):
+        img = cv2.addWeighted(color, 1, edge, 1, 0.0)
+        if invert:
+            r1, g1, b1 = 255, 255, 255 # Original value
+            r2, g2, b2 = 0, 0, 0 # Value that we want to replace it with
+            red, green, blue = img[:,:,0], img[:,:,1], img[:,:,2]
+            mask = (red == r1) & (green == g1) & (blue == b1)
+            img[:,:,:3][mask] = [r2, g2, b2]
+        return img
+ 
+    def reset(self):
+        if self.fileName:
+            self.clearMode = True
+            self.open_image()
+            self.clearMode = False
+        else:
+            buttonReply = QMessageBox.question(self, 'Error', "Please click File > Open Image to activate clear image", QMessageBox.Yes, QMessageBox.Yes)
+
+    def flip_image_horizontal(self):
+        self.edge = cv2.flip(self.edge, 1)
+        self.color_domain = cv2.flip(self.color_domain, 1)
+        self.image = self.image.transformed(QTransform().scale(-1, 1))
+        if type(self.outputImg):
+            self.outputImg = cv2.flip(self.outputImg, 1)
+        self.update_views()
+    
+    def flip_image_vertical(self):
+        self.edge = cv2.flip(self.edge, 0)
+        self.color_domain = cv2.flip(self.color_domain, 0)
+        self.image = self.image.transformed(QTransform().scale(1, -1))
+        if type(self.outputImg):
+            self.outputImg = cv2.flip(self.outputImg, 0)
+        self.update_views()
+        
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    application = MainWindow()
+    application.show()
+    sys.exit(app.exec_())

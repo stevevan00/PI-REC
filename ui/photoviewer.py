@@ -75,9 +75,10 @@ class PhotoViewer(QtWidgets.QGraphicsView):
 
 
 class PhotoWindow(QtWidgets.QWidget):
-    def __init__(self):
+    def __init__(self, path):
         super(PhotoWindow, self).__init__()
         self.viewer = PhotoViewer(self)
+        self.path = path
         # 'Load image' button
         self.btnPixInfo = QtWidgets.QToolButton(self)
         self.btnPixInfo.setText('Enter pixel info mode')
@@ -96,7 +97,7 @@ class PhotoWindow(QtWidgets.QWidget):
         self.loadImage()
 
     def loadImage(self):
-        self.viewer.setPhoto(QtGui.QPixmap('./temp/output.png'))
+        self.viewer.setPhoto(QtGui.QPixmap(self.path))
 
     def pixInfo(self):
         self.viewer.toggleDragMode()
