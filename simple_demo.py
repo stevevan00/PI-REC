@@ -8,6 +8,7 @@ from ui.photoviewer import PhotoWindow
 from ui.designer.paint import DesignerWindow
 from MainWindow import Ui_MainWindow
 import sys
+from colorutils import rgb_to_hex, hex_to_rgb, rgb_to_hsv
 
 sketchButtons = [
     'designerSketchBtn',
@@ -41,6 +42,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.fileName = None
         self.clearMode = False
         self.input_size = 176
+        self.dlg = QColorDialog(self.sketchGraphicsView)
+        self.labelColors = None
+        self.colors = None
+        self.K = 10
+        self.sigma = 2
         # check the exist of path and the weights files
         self.datasets = ['Asian', 'Non_Asian', 'Anime', 'Pixiv', 'Webtoon']
         self.models_G = []
@@ -74,6 +80,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.saveSketchBtn.clicked.connect(self.save_sketch)
         
         #color button
+        self.dominantColor_1.clicked.connect(self.open_palette_1)
         self.designerColorBtn.clicked.connect(self.open_color_designer)
         self.viewerColorBtn.clicked.connect(self.open_color_viewer)
         self.saveColorBtn.clicked.connect(self.save_color)
@@ -83,6 +90,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.refinementBtn.clicked.connect(self.refine_image)
         self.viewerOutputBtn.clicked.connect(self.open_output_viewer)
         self.saveOutputBtn.clicked.connect(self.save_output)
+    
+    def open_palette_1(self):
+        self.dlg.exec_()
+        color = self.dlg.currentColor().name()
+        if color == '#000000': color = '#000001' 
+        
+        color_domain = self.color_domain
+        rgb = hex_to_rgb(color)
+        
+        self.colors[0] = rgb[::-1]
+        res = self.colors[self.labelColors.flatten()]
+        res = res.reshape((color_domain.shape))
+        self.color_domain = res
+        
+        self.update_views()
     
     def reconstruct_image(self):
         # self.edge = self.make_sketch(self.edge, self.sketch_scene.sketch_points)
@@ -170,9 +192,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                      
     def open_image(self):
         if not self.clearMode:
-            fileName, _ = QFileDialog.getOpenFileName(self, "Open File",
-                    QDir.currentPath())
-            # fileName = './examples/draw_output.png'
+            # fileName, _ = QFileDialog.getOpenFileName(self, "Open File",
+            #         QDir.currentPath())
+            fileName = './examples/draw_output.png'
             self.fileName = fileName
         if self.fileName:
             image = QPixmap(self.fileName)
@@ -184,7 +206,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.image = image.scaled(self.sketchGraphicsView.size(), Qt.IgnoreAspectRatio)
 
             
-            edge, color_domain = initial_colorful_pic(self.fileName, 2,10)
+            edge, color_domain = initial_colorful_pic(self.fileName, self.sigma,self.K)
             # edge = np.expand_dims(edge,axis=2)
             edge = cv2.cvtColor(edge,cv2.COLOR_GRAY2BGR)
             self.edge = edge
@@ -245,19 +267,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # define criteria, number of clusters(K) and apply kmeans()
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
         # K = 8
-        ret, label, center = cv2.kmeans(Z, 4, None, criteria, 8, cv2.KMEANS_PP_CENTERS)
+        ret, label, center = cv2.kmeans(Z, self.K, None, criteria, 8, cv2.KMEANS_PP_CENTERS)
 
         # Now convert back into uint8, and make original image
         center = np.uint8(center)
         
         #returning after converting to integer from float
-        from colorutils import Color, rgb_to_hex
         # print('Color Domain',center)
+        self.labelColors = label
+        self.colors = center
         for i in range(1,5):
             btn = getattr(self, 'dominantColor_{}'.format(i))
             btn.setStyleSheet('')
             
         for index, color in enumerate(center):
+            if index > 3: break
             btn = getattr(self, 'dominantColor_{}'.format(index+1))
             hex = rgb_to_hex(tuple(color[::-1]))
             btn.setStyleSheet('QPushButton { background-color: %s; }' % hex)
