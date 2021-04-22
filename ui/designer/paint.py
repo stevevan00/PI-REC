@@ -39,12 +39,11 @@ FONT_SIZES = [7, 8, 9, 10, 11, 12, 13, 14, 18, 24, 36, 48, 64, 72, 96, 144, 288]
 
 MODES = [
     'selectpoly', 'selectrect',
-    'eraser',
+    'eraser','pen','ellipse',
     'dropper',
-    'pen', 'brush',
-    'spray',
-    'line', 'rect',
-    'ellipse',
+     'brush',
+    # 'spray','line', 'rect',
+    
 ]
 
 CANVAS_DIMENSIONS = 176, 176
@@ -111,7 +110,8 @@ class Canvas(QLabel):
 
     def initialize(self):
         self.background_color = QColor(self.secondary_color) if self.secondary_color else QColor(Qt.white)
-        self.eraser_color = QColor(self.secondary_color) if self.secondary_color else QColor(Qt.white)
+        # self.eraser_color = QColor(self.secondary_color) if self.secondary_color else QColor(Qt.white)
+        self.eraser_color = QColor(self.secondary_color) if self.secondary_color else QColor(Qt.black)
         self.eraser_color.setAlpha(100)
         self.reset()
 
@@ -292,7 +292,7 @@ class Canvas(QLabel):
     def eraser_mouseMoveEvent(self, e):
         if self.last_pos:
             p = QPainter(self.pixmap())
-            p.setPen(QPen(self.eraser_color, 30, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+            p.setPen(QPen(self.eraser_color, 10, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
             p.drawLine(self.last_pos, e.pos())
 
             self.last_pos = e.pos()
@@ -699,14 +699,20 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
         self.mode = mode
         self.path = None
         # Replace canvas placeholder from QtDesigner.
-        self.horizontalLayout.removeWidget(self.canvas)
+        self.verticalLayout_3.removeWidget(self.canvas)
+        # self.verticalLayout_100 = QtWidgets.QVBoxLayout(self.horizontalLayout)
+        # self.verticalLayout_100.setContentsMargins(0, 0, 0, 0)
+        # self.verticalLayout_100.setObjectName("verticalLayout_100")
         self.canvas = Canvas()
         self.canvas.initialize()
+        self.canvas.setMaximumHeight(176)
+        self.canvas.setMaximumWidth(176)
         # We need to enable mouse tracking to follow the mouse without the button pressed.
         self.canvas.setMouseTracking(True)
         # Enable focus to capture key inputs.
         self.canvas.setFocusPolicy(Qt.StrongFocus)
-        self.horizontalLayout.addWidget(self.canvas)
+        # self.canvas.setGeometry(QtCore.QRect(115, 0, 176,176))
+        self.verticalLayout_3.insertWidget(0, self.canvas)
         # self.fileToolbar.hide()
         self.actionNewImage.setVisible(False)
         self.actionOpenImage.setVisible(False)
@@ -726,11 +732,29 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
         self.secondaryButton.pressed.connect(lambda: self.choose_color(self.set_secondary_color))
 
         # Initialize button colours.
+        self.stampButton.hide()
+        self.stampnextButton.hide()
+        self.textButton.hide()
+        self.lineButton.hide()
+        self.polylineButton.hide()
+        self.rectButton.hide()
+        self.polygonButton.hide()
+        self.roundrectButton.hide()
+        self.fillButton.hide()
+        self.sprayButton.hide()
         if self.mode == 0:
             for n, hex in enumerate(COLORS, 1):
                 btn = getattr(self, 'colorButton_%d' % n)
                 btn.hide()
+            self.dropperButton.hide()
+            self.brushButton.hide()
         elif self.mode == 1:
+            self.selectpolyButton.hide()
+            self.selectrectButton.hide()
+            self.penButton.hide()
+            self.eraserButton.hide()
+            self.ellipseButton.hide()
+            
             for n, hex in enumerate(COLORS, 1):
                 btn = getattr(self, 'colorButton_%d' % n)
                 btn.setStyleSheet('QPushButton { background-color: %s; }' % hex)
@@ -778,16 +802,18 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
 
         sizeicon = QLabel()
         sizeicon.setPixmap(QPixmap(':/icons/border-weight.png'))
-        self.drawingToolbar.addWidget(sizeicon)
         self.sizeselect = QSlider()
-        self.sizeselect.setRange(1,20)
+        # self.sizeselect.setRange(1,20)
+        self.sizeselect.setRange(1,5)
         self.sizeselect.setOrientation(Qt.Horizontal)
         self.sizeselect.valueChanged.connect(lambda s: self.canvas.set_config('size', s))
-        self.drawingToolbar.addWidget(self.sizeselect)
+        if self.mode == 1:
+            self.drawingToolbar.addWidget(sizeicon)
+            self.drawingToolbar.addWidget(self.sizeselect)
 
-        self.actionFillShapes.triggered.connect(lambda s: self.canvas.set_config('fill', s))
-        self.drawingToolbar.addAction(self.actionFillShapes)
-        self.actionFillShapes.setChecked(True)
+        # self.actionFillShapes.triggered.connect(lambda s: self.canvas.set_config('fill', s))
+        # self.drawingToolbar.addAction(self.actionFillShapes)
+        # self.actionFillShapes.setChecked(True)
 
         self.open_file_mode()
         self.show()
