@@ -8,12 +8,11 @@ from PyQt5.QtGui import QPainter, QBitmap, QPolygon, QPen, QBrush, QColor
 from PyQt5.QtCore import Qt
 
 from ui.designer.MainWindow import Ui_MainWindow
-
 import os
 import sys
 import random
 import types
-
+import cv2
 try:
     # Include in try/except block if you're also targeting Mac/Linux
     from PyQt5.QtWinExtras import QtWin
@@ -49,7 +48,7 @@ MODES = [
 CANVAS_DIMENSIONS = 176, 176
 
 STAMPS = [
-    ':/stamps/pie-apple.png',
+    './temp/sketch.png',
     # ':/stamps/pie-cherry.png',
     # ':/stamps/pie-cherry2.png',
     # ':/stamps/pie-lemon.png',
@@ -59,8 +58,8 @@ STAMPS = [
     # ':/stamps/pie-walnut.png',
 ]
 
-SELECTION_PEN = QPen(QColor(0xff, 0xff, 0xff), 1, Qt.DashLine)
-PREVIEW_PEN = QPen(QColor(0xff, 0xff, 0xff), 1, Qt.SolidLine)
+SELECTION_PEN = QPen(QColor(Qt.white), 1, Qt.DashLine)
+PREVIEW_PEN = QPen(QColor(Qt.white), 1, Qt.SolidLine)
 
 
 def build_font(config):
@@ -92,7 +91,7 @@ class Canvas(QLabel):
     config = {
         # Drawing options.
         'size': 1,
-        'fill': True,
+        'fill': False,
         # Font options.
         'font': QFont('Times'),
         'fontsize': 12,
@@ -508,7 +507,8 @@ class Canvas(QLabel):
             self.timer_cleanup()
 
             p = QPainter(self.pixmap())
-            p.setPen(QPen(self.primary_color, self.config['size'], Qt.SolidLine, Qt.SquareCap, Qt.MiterJoin))
+            # p.setPen(QPen(self.primary_color, self.config['size'], Qt.SolidLine, Qt.SquareCap, Qt.MiterJoin))
+            p.setPen(QPen(QColor(Qt.white), self.config['size'], Qt.SolidLine, Qt.SquareCap, Qt.MiterJoin))
 
             if self.config['fill']:
                 p.setBrush(QBrush(self.secondary_color))
@@ -700,6 +700,8 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
         self.path = None
         # Replace canvas placeholder from QtDesigner.
         self.verticalLayout_3.removeWidget(self.canvas)
+        self.showSketch = False
+        self.firstTime = True
         # self.verticalLayout_100 = QtWidgets.QVBoxLayout(self.horizontalLayout)
         # self.verticalLayout_100.setContentsMargins(0, 0, 0, 0)
         # self.verticalLayout_100.setObjectName("verticalLayout_100")
@@ -733,7 +735,6 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
 
         # Initialize button colours.
         self.stampButton.hide()
-        self.stampnextButton.hide()
         self.textButton.hide()
         self.lineButton.hide()
         self.polylineButton.hide()
@@ -748,6 +749,7 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
                 btn.hide()
             self.dropperButton.hide()
             self.brushButton.hide()
+            self.stampnextButton.hide()
         elif self.mode == 1:
             self.selectpolyButton.hide()
             self.selectrectButton.hide()
@@ -788,7 +790,7 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
 
         # Setup the stamp state.
         self.current_stamp_n = -1
-        self.next_stamp()
+        # self.next_stamp()
         self.stampnextButton.pressed.connect(self.next_stamp)
 
         # Menu options
@@ -815,7 +817,7 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
         # self.drawingToolbar.addAction(self.actionFillShapes)
         # self.actionFillShapes.setChecked(True)
 
-        self.open_file_mode()
+        self.open_file_mode('./temp/sketch.png' if self.mode == 0 else './temp/color_domain.png')
         self.show()
 
     def choose_color(self, callback):
@@ -832,15 +834,39 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
         self.secondaryButton.setStyleSheet('QPushButton { background-color: %s; }' % hex)
 
     def next_stamp(self):
-        self.current_stamp_n += 1
-        if self.current_stamp_n >= len(STAMPS):
-            self.current_stamp_n = 0
+        if self.showSketch:
+            self.actionSaveImage.setEnabled(True)
+            self.open_file_mode('./temp/color_domain.png')
+        else:
+            self.actionSaveImage.setEnabled(False)
+            path = './temp/color_domain.png'
+            pixmap = self.canvas.pixmap()
+            pixmap.save(path, "PNG")
+            color_domain = cv2.imread(path)
+            edge = cv2.imread('./temp/sketch.png')
+            img = self.concat_sketch_color(edge, color_domain)
+            cv2.imwrite('./temp/color_domain_sketch.png', img)
+            self.open_file_mode('./temp/color_domain_sketch.png')
+        self.showSketch = not self.showSketch    
+        # self.current_stamp_n += 1
+        # if self.current_stamp_n >= len(STAMPS):
+        #     self.current_stamp_n = 0
 
-        pixmap = QPixmap(STAMPS[self.current_stamp_n])
-        self.stampnextButton.setIcon(QIcon(pixmap))
+        # pixmap = QPixmap(STAMPS[self.current_stamp_n])
+        # self.stampnextButton.setIcon(QIcon(pixmap))
 
-        self.canvas.current_stamp = pixmap
-
+        # self.canvas.current_stamp = pixmap
+        
+    def concat_sketch_color(self, edge, color, invert=True):
+        img = cv2.addWeighted(color, 1, edge, 1, 0.0)
+        if invert:
+            r1, g1, b1 = 255, 255, 255 # Original value
+            r2, g2, b2 = 0, 0, 0 # Value that we want to replace it with
+            red, green, blue = img[:,:,0], img[:,:,1], img[:,:,2]
+            mask = (red == r1) & (green == g1) & (blue == b1)
+            img[:,:,:3][mask] = [r2, g2, b2]
+        return img
+ 
     def copy_to_clipboard(self):
         clipboard = QApplication.clipboard()
 
@@ -853,13 +879,13 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
         else:
             clipboard.setPixmap(self.canvas.pixmap())
 
-    def open_file_mode(self):
+    def open_file_mode(self, path):
         """
         Open image file for editing, scaling the smaller dimension and cropping the remainder.
         :return:
         """
         
-        path = './temp/sketch.png' if self.mode == 0 else './temp/color_domain_sketch.png'
+        # path = './temp/sketch.png' if self.mode == 0 else './temp/color_domain_sketch.png'
         if path:
             pixmap = QPixmap()
             pixmap.load(path)
@@ -887,7 +913,6 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
 
             self.canvas.setPixmap(pixmap)
 
-    
     def open_file(self):
         """
         Open image file for editing, scaling the smaller dimension and cropping the remainder.
@@ -921,7 +946,6 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
                 )
 
             self.canvas.setPixmap(pixmap)
-
 
     def save_file(self):
         """

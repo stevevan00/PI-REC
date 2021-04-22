@@ -81,6 +81,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         
         #color button
         self.dominantColor_1.clicked.connect(self.open_palette_1)
+        self.dominantColor_2.clicked.connect(self.open_palette_2)
+        self.dominantColor_3.clicked.connect(self.open_palette_3)
+        self.dominantColor_4.clicked.connect(self.open_palette_4)
         self.designerColorBtn.clicked.connect(self.open_color_designer)
         self.viewerColorBtn.clicked.connect(self.open_color_viewer)
         self.saveColorBtn.clicked.connect(self.save_color)
@@ -100,6 +103,51 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         rgb = hex_to_rgb(color)
         
         self.colors[0] = rgb[::-1]
+        res = self.colors[self.labelColors.flatten()]
+        res = res.reshape((color_domain.shape))
+        self.color_domain = res
+        
+        self.update_views()
+        
+    def open_palette_2(self):
+        self.dlg.exec_()
+        color = self.dlg.currentColor().name()
+        if color == '#000000': color = '#000001' 
+        
+        color_domain = self.color_domain
+        rgb = hex_to_rgb(color)
+        
+        self.colors[1] = rgb[::-1]
+        res = self.colors[self.labelColors.flatten()]
+        res = res.reshape((color_domain.shape))
+        self.color_domain = res
+        
+        self.update_views()
+        
+    def open_palette_3(self):
+        self.dlg.exec_()
+        color = self.dlg.currentColor().name()
+        if color == '#000000': color = '#000001' 
+        
+        color_domain = self.color_domain
+        rgb = hex_to_rgb(color)
+        
+        self.colors[2] = rgb[::-1]
+        res = self.colors[self.labelColors.flatten()]
+        res = res.reshape((color_domain.shape))
+        self.color_domain = res
+        
+        self.update_views()
+        
+    def open_palette_4(self):
+        self.dlg.exec_()
+        color = self.dlg.currentColor().name()
+        if color == '#000000': color = '#000001' 
+        
+        color_domain = self.color_domain
+        rgb = hex_to_rgb(color)
+        
+        self.colors[3] = rgb[::-1]
         res = self.colors[self.labelColors.flatten()]
         res = res.reshape((color_domain.shape))
         self.color_domain = res
@@ -142,9 +190,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 print('Yes clicked.')   
                 
     def open_color_viewer(self):
-        path = './temp/color_domain.png'
         if type(self.color_domain):
+            path = './temp/color_domain.png'
             cv2.imwrite(path,self.color_domain)
+            new_color_domain = self.concat_sketch_color(self.edge, self.color_domain)
+            path = './temp/color_domain_sketch.png'
+            cv2.imwrite(path,new_color_domain)
             self.window = PhotoWindow(path=path)
             self.window.setGeometry(500, 300, 800, 600)
             self.window.show()
@@ -192,9 +243,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                      
     def open_image(self):
         if not self.clearMode:
-            # fileName, _ = QFileDialog.getOpenFileName(self, "Open File",
-            #         QDir.currentPath())
-            fileName = './examples/draw_output.png'
+            fileName, _ = QFileDialog.getOpenFileName(self, "Open File",
+                    QDir.currentPath())
+            # fileName = './examples/draw_output.png'
             self.fileName = fileName
         if self.fileName:
             image = QPixmap(self.fileName)
@@ -344,8 +395,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.canvasWindow._signal.connect(self.on_close_sketch_designer)
             
     def open_color_designer(self):
-        path = './temp/color_domain_sketch.png'
+        path = './temp/color_domain.png'
+        cv2.imwrite(path,self.color_domain)
         new_color_domain = self.concat_sketch_color(self.edge, self.color_domain)
+        path = './temp/color_domain_sketch.png'
         cv2.imwrite(path,new_color_domain)
         self.canvasWindow = DesignerWindow(mode=1)
         self.canvasWindow.show() 
