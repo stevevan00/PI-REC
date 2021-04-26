@@ -13,6 +13,7 @@ import sys
 import random
 import types
 import cv2
+import numpy as np
 try:
     # Include in try/except block if you're also targeting Mac/Linux
     from PyQt5.QtWinExtras import QtWin
@@ -48,6 +49,7 @@ MODES = [
 CANVAS_DIMENSIONS = 176, 176
 
 STAMPS = [
+    './temp/color_domain.png',
     './temp/sketch.png',
     # ':/stamps/pie-cherry.png',
     # ':/stamps/pie-cherry2.png',
@@ -91,6 +93,7 @@ class Canvas(QLabel):
     config = {
         # Drawing options.
         'size': 1,
+        'move_pixel': 5,
         'fill': False,
         # Font options.
         'font': QFont('Times'),
@@ -104,7 +107,7 @@ class Canvas(QLabel):
     preview_pen = None
 
     timer_event = None
-
+    select_shape = None
     current_stamp = None
 
     def initialize(self):
@@ -112,7 +115,7 @@ class Canvas(QLabel):
         # self.eraser_color = QColor(self.secondary_color) if self.secondary_color else QColor(Qt.white)
         self.eraser_color = QColor(self.secondary_color) if self.secondary_color else QColor(Qt.black)
         self.eraser_color.setAlpha(100)
-        self.reset()
+        # self.reset()
 
     def reset(self):
         # Create the pixmap for display.
@@ -154,6 +157,7 @@ class Canvas(QLabel):
         self.locked = False
         # Apply the mode
         self.mode = mode
+        self.select_shape = None
 
     def reset_mode(self):
         self.set_mode(self.mode)
@@ -280,7 +284,7 @@ class Canvas(QLabel):
 
         :return: QPixmap of the copied region.
         """
-        self.timer_cleanup()
+        # self.timer_cleanup()
         return self.pixmap().copy(QRect(self.origin_pos, self.current_pos))
 
     # Eraser events
@@ -364,13 +368,24 @@ class Canvas(QLabel):
 
     # Text events
 
-    def keyPressEvent(self, e):
-        if self.mode == 'text':
-            if e.key() == Qt.Key_Backspace:
-                self.current_text = self.current_text[:-1]
-            else:
-                self.current_text = self.current_text + e.text()
-
+    def keyPressEvent(self, event):
+        if self.mode == 'selectrect':
+            move = self.config['move_pixel']
+            if event.key() == QtCore.Qt.Key_W:
+                print('W Press')
+                self.copy_to_clipboard(0, move * -1)
+            elif event.key() == QtCore.Qt.Key_S:
+                print('S Press')
+                self.copy_to_clipboard(0, move)
+            elif event.key() == QtCore.Qt.Key_A:
+                print('A Press')
+                self.copy_to_clipboard(move * -1, 0)
+            elif event.key() == QtCore.Qt.Key_D:
+                print('D Press')
+                self.copy_to_clipboard(move, 0)
+            elif event.key() == QtCore.Qt.Key_Q:
+                self.set_mode('selectrect')
+            
     def text_mousePressEvent(self, e):
         if e.button() == Qt.LeftButton and self.current_pos is None:
             self.current_pos = e.pos()
@@ -687,7 +702,50 @@ class Canvas(QLabel):
 
     def roundrect_mouseReleaseEvent(self, e):
         self.generic_shape_mouseReleaseEvent(e)
+        
+    def copy_to_clipboard(self, move_x, move_y):
+        # clipboard = QApplication.clipboard()
 
+        if self.mode == 'selectrect' and self.locked:
+            selectrect = self.selectrect_copy()
+            # clipboard.setPixmap(selectrect)
+            selectrect.save('./temp/sketch_crop.png', "PNG")
+            sketch = cv2.imread('./temp/sketch.png')
+            sketch_crop = cv2.imread('./temp/sketch_crop.png')
+            x1, y1 = self.origin_pos.x(), self.origin_pos.y()
+            x2, y2 = self.current_pos.x(), self.current_pos.y()
+            w, h, c = sketch_crop.shape
+            sketch_crop = sketch_crop[:(y2-y1), :(x2-x1)]
+            
+            w, h, c = sketch_crop.shape
+            
+            sketch[y1:y1+w, x1:x1+h] = np.zeros((w, h, c))
+            if move_x > 0:
+                new_x2 = x2+move_x if x2+move_x <= 176 else 176
+                new_x1 = new_x2 - h
+            elif move_x <= 0:
+                new_x1 = x1+move_x if x1+move_x >= 0 else 0
+                new_x2 = new_x1 + h
+            else:
+                new_x1, new_x2 = x1, x2
+                
+            if move_y > 0:
+                new_y2 = y2+move_y if y2+move_y <= 176 else 176
+                new_y1 = new_y2 - w
+            elif move_y <= 0:
+                new_y1 = y1+move_y if y1+move_y >= 0 else 0
+                new_y2 = new_y1 + w 
+            else:
+                new_y1, new_y2 = y1, y2
+                
+            # new_y1, new_y2, new_x1, new_x2 = new_y1-1, new_y2-1, new_x1-1, new_x2-1
+            sketch[new_y1:new_y2, new_x1:new_x2] = sketch_crop
+            cv2.imwrite('./temp/sketch.png', sketch)
+            self.setPixmap(QPixmap('./temp/sketch.png'))
+            self.origin_pos.setX(new_x1)
+            self.origin_pos.setY(new_y1)
+            self.current_pos.setX(new_x2)
+            self.current_pos.setY(new_y2)
 
 class DesignerWindow(QMainWindow, Ui_MainWindow):
 
@@ -700,6 +758,8 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
         self.path = None
         # Replace canvas placeholder from QtDesigner.
         self.verticalLayout_3.removeWidget(self.canvas)
+        if self.mode == 0:
+            self.label.setText('NOTE!\nFor Selection Only\nPress W: move up\nPress S: move down\nPress A: move left\nPress D: move right\nSelection will never stop until change button mode (left side) or Press Q')
         self.showSketch = False
         self.firstTime = True
         # self.verticalLayout_100 = QtWidgets.QVBoxLayout(self.horizontalLayout)
@@ -772,7 +832,7 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
                 btn.mousePressEvent = types.MethodType(patch_mousePressEvent, btn)
 
         # Setup up action signals
-        self.actionCopy.triggered.connect(self.copy_to_clipboard)
+        # self.actionCopy.triggered.connect(self.copy_to_clipboard)
 
         # Initialize animation timer.
         self.timer = QTimer()
@@ -795,6 +855,7 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
 
         # Menu options
         self.actionNewImage.triggered.connect(self.canvas.initialize)
+        # self.actionNewImage.triggered.connect(self.copy_to_clipboard)
         self.actionOpenImage.triggered.connect(self.open_file)
         self.actionSaveImage.triggered.connect(self.save_file)
         self.actionClearImage.triggered.connect(self.canvas.reset)
@@ -818,6 +879,8 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
         # self.actionFillShapes.setChecked(True)
 
         self.open_file_mode('./temp/sketch.png' if self.mode == 0 else './temp/color_domain.png')
+        self.centralWidget.adjustSize()
+        self.adjustSize()
         self.show()
 
     def choose_color(self, callback):
@@ -848,12 +911,13 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
             cv2.imwrite('./temp/color_domain_sketch.png', img)
             self.open_file_mode('./temp/color_domain_sketch.png')
         self.showSketch = not self.showSketch    
-        # self.current_stamp_n += 1
-        # if self.current_stamp_n >= len(STAMPS):
-        #     self.current_stamp_n = 0
+        
+        self.current_stamp_n += 1
+        if self.current_stamp_n >= len(STAMPS):
+            self.current_stamp_n = 0
 
-        # pixmap = QPixmap(STAMPS[self.current_stamp_n])
-        # self.stampnextButton.setIcon(QIcon(pixmap))
+        pixmap = QPixmap(STAMPS[self.current_stamp_n])
+        self.stampnextButton.setIcon(QIcon(pixmap))
 
         # self.canvas.current_stamp = pixmap
         
@@ -867,17 +931,52 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
             img[:,:,:3][mask] = [r2, g2, b2]
         return img
  
-    def copy_to_clipboard(self):
-        clipboard = QApplication.clipboard()
+    def copy_to_clipboard(self, move_x, move_y):
+        # clipboard = QApplication.clipboard()
 
         if self.canvas.mode == 'selectrect' and self.canvas.locked:
-            clipboard.setPixmap(self.canvas.selectrect_copy())
+            selectrect = self.canvas.selectrect_copy()
+            # clipboard.setPixmap(selectrect)
+            selectrect.save('./temp/sketch_crop.png', "PNG")
+            sketch = cv2.imread('./temp/sketch.png')
+            sketch_crop = cv2.imread('./temp/sketch_crop.png')
+            x1, y1 = self.canvas.origin_pos.x(), self.canvas.origin_pos.y()
+            x2, y2 = self.canvas.current_pos.x(), self.canvas.current_pos.y()
+            # move_x = 5
+            # move_y = -5
+            print(sketch_crop.shape)
+            w, h, c = sketch_crop.shape
+            sketch[y1:y1+w, x1:x1+h] = np.zeros((w, h, c))
+            
+            if move_x > 0:
+                new_x2 = x2+move_x if x2+move_x <= 176 else 176
+                new_x1 = new_x2 - h
+            else:
+                new_x1 = x1+move_x if x1+move_x >= 0 else 0
+                new_x2 = new_x1 + h
+                
+            if move_y > 0:
+                new_y2 = y2+move_y if y2+move_y <= 176 else 176
+                new_y1 = new_y2 - w
+            else:
+                new_y1 = y1+move_y if y1+move_y >= 0 else 0
+                new_y2 = new_y1 + w
+                
+            sketch[new_y1:new_y2, new_x1:new_x2] = sketch_crop
+            cv2.imwrite('./temp/sketch.png', sketch)
+            self.open_file_mode('./temp/sketch.png')
+            self.canvas.origin_pos.setX(new_x1)
+            self.canvas.origin_pos.setY(new_y1)
+            self.canvas.current_pos.setX(new_x2)
+            self.canvas.current_pos.setY(new_y2)
+            # print(self.origin_pos.x(), self.origin_pos.y(), self.current_pos.x(), self.current_pos.y() )
+        
+            
+        # elif self.canvas.mode == 'selectpoly' and self.canvas.locked:
+        #     clipboard.setPixmap(self.canvas.selectpoly_copy())
 
-        elif self.canvas.mode == 'selectpoly' and self.canvas.locked:
-            clipboard.setPixmap(self.canvas.selectpoly_copy())
-
-        else:
-            clipboard.setPixmap(self.canvas.pixmap())
+        # else:
+        #     clipboard.setPixmap(self.canvas.pixmap())
 
     def open_file_mode(self, path):
         """
@@ -948,17 +1047,14 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
             self.canvas.setPixmap(pixmap)
 
     def save_file(self):
-        """
-        Save active canvas to image file.
-        :return:
-        """
-        # path, _ = QFileDialog.getSaveFileName(self, "Save file", "", "PNG Image file (*.png)")
-
-        # if path:
-        self.path = './temp/designer_{}.png'.format('sketch' if self.mode == 0 else 'color_domain')
-        pixmap = self.canvas.pixmap()
-        pixmap.save(self.path, "PNG")
-        self.close()
+        if self.canvas.locked:
+            QMessageBox.information(self, "Canvas locked",
+                    "Cannot save because your action on selection hadn't completed")
+        else:
+            self.path = './temp/designer_{}.png'.format('sketch' if self.mode == 0 else 'color_domain')
+            pixmap = self.canvas.pixmap()
+            pixmap.save(self.path, "PNG")
+            self.close()
 
     def invert(self):
         img = QImage(self.canvas.pixmap())
@@ -979,8 +1075,7 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
         if self.path:
             self._signal.emit(self.path)
         # self.close()
-
-
+    
 if __name__ == '__main__':
 
     app = QApplication(sys.argv)

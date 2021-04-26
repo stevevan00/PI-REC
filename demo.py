@@ -7,7 +7,7 @@ from ui.ui import Ui_Form
 from ui.mouse_event import GraphicsScene
 from ui.functions import *
 from ui.photoviewer import PhotoWindow
-from ui.designer.paint import MainWindow
+# from ui.designer import MainWindow
 import numpy as np
 # from utils.config import Config
 # from model import Model
@@ -46,6 +46,9 @@ class Ex(QMainWindow, Ui_Form):
         self.graphicsView.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.graphicsView.setCursor(QCursor(Qt.CrossCursor))
 
+        self.moveObject = MovingObject(50, 50, 40)
+        self.sketch_scene.addItem(self.moveObject)
+        
         self.color_scene = GraphicsScene(self.modes, sketch=False)
         self.graphicsView_2.setScene(self.color_scene)
         self.graphicsView_2.setAlignment(Qt.AlignTop | Qt.AlignLeft)
@@ -263,6 +266,37 @@ class Ex(QMainWindow, Ui_Form):
             if buttonReply == QMessageBox.Yes:
                 print('Yes clicked.')    
                 
+class MovingObject(QGraphicsEllipseItem):
+    def __init__(self, x, y, r):
+        super().__init__(0, 0, r, r)
+        self.setPos(x, y)
+        self.setBrush(Qt.blue)
+        self.setAcceptHoverEvents(True)
+
+    # mouse hover event
+    def hoverEnterEvent(self, event):
+        app.instance().setOverrideCursor(Qt.OpenHandCursor)
+
+    def hoverLeaveEvent(self, event):
+        app.instance().restoreOverrideCursor()
+
+    # mouse click event
+    def mousePressEvent(self, event):
+        pass
+
+    def mouseMoveEvent(self, event):
+        orig_cursor_position = event.lastScenePos()
+        updated_cursor_position = event.scenePos()
+
+        orig_position = self.scenePos()
+
+        updated_cursor_x = updated_cursor_position.x() - orig_cursor_position.x() + orig_position.x()
+        updated_cursor_y = updated_cursor_position.y() - orig_cursor_position.y() + orig_position.y()
+        self.setPos(QPointF(updated_cursor_x, updated_cursor_y))
+
+    def mouseReleaseEvent(self, event):
+        print('x: {0}, y: {1}'.format(self.pos().x(), self.pos().y()))
+       
 if __name__ == '__main__':
     # config = Config('demo.yaml')
     # os.environ["CUDA_VISIBLE_DEVICES"] = str(config.GPU_NUM)
