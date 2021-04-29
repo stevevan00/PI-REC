@@ -42,7 +42,8 @@ MODES = [
     'eraser','pen','ellipse',
     'dropper',
      'brush',
-    # 'spray','line', 'rect',
+    'spray',
+    # 'line', 'rect',
     
 ]
 
@@ -802,7 +803,6 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
         self.polygonButton.hide()
         self.roundrectButton.hide()
         self.fillButton.hide()
-        self.sprayButton.hide()
         if self.mode == 0:
             for n, hex in enumerate(COLORS, 1):
                 btn = getattr(self, 'colorButton_%d' % n)
@@ -810,6 +810,7 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
             self.dropperButton.hide()
             self.brushButton.hide()
             self.stampnextButton.hide()
+            self.sprayButton.hide()
         elif self.mode == 1:
             self.selectpolyButton.hide()
             self.selectrectButton.hide()

@@ -38,6 +38,15 @@ def cvImage2QImage(img, bgr=True):
 
 def initial_colorful_pic(file, sigma, kmeans):
     img = cv2.imread(file)
+    
+    imgh, imgw = img.shape[0:2]
+    if imgh != imgw:
+        # center crop
+        side = np.minimum(imgh, imgw)
+        j = (imgh - side) // 2
+        i = (imgw - side) // 2
+        img = img[j:j + side, i:i + side, ...]
+        
     img = resize(img, WIN_SIZE, WIN_SIZE, )
     img_gray = rgb2gray(img)
 

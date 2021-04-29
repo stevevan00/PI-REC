@@ -46,7 +46,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.labelColors = None
         self.colors = None
         self.K = 10
-        self.sigma = 2
+        self.sigma = 2.5
         # check the exist of path and the weights files
         self.datasets = ['Asian', 'Non_Asian', 'Anime', 'Pixiv', 'Webtoon']
         self.models_G = []
