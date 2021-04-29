@@ -40,10 +40,9 @@ FONT_SIZES = [7, 8, 9, 10, 11, 12, 13, 14, 18, 24, 36, 48, 64, 72, 96, 144, 288]
 MODES = [
     'selectpoly', 'selectrect',
     'eraser','pen','ellipse',
-    'dropper',
-     'brush',
-    'spray',
-    # 'line', 'rect',
+    'line','rect', 'polyline',
+    
+    'dropper','brush','spray',
     
 ]
 
@@ -338,7 +337,7 @@ class Canvas(QLabel):
     def brush_mouseMoveEvent(self, e):
         if self.last_pos:
             p = QPainter(self.pixmap())
-            p.setPen(QPen(self.active_color, self.config['size'] * BRUSH_MULT, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+            p.setPen(QPen(Qt.black, self.config['size'] * BRUSH_MULT, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
             p.drawLine(self.last_pos, e.pos())
 
             self.last_pos = e.pos()
@@ -370,7 +369,7 @@ class Canvas(QLabel):
     # Text events
 
     def keyPressEvent(self, event):
-        if self.mode == 'selectrect':
+        if self.mode == 'selectrect' or self.mode == 'selectpoly':
             move = self.config['move_pixel']
             if event.key() == QtCore.Qt.Key_W:
                 print('W Press')
@@ -539,6 +538,7 @@ class Canvas(QLabel):
         self.origin_pos = e.pos()
         self.current_pos = e.pos()
         self.preview_pen = PREVIEW_PEN
+        # self.preview_pen = SELECTION_PEN
         self.timer_event = self.line_timerEvent
 
     def line_timerEvent(self, final=False):
@@ -564,7 +564,7 @@ class Canvas(QLabel):
             self.timer_cleanup()
 
             p = QPainter(self.pixmap())
-            p.setPen(QPen(self.primary_color, self.config['size'], Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+            p.setPen(QPen(Qt.white, self.config['size'], Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
 
             p.drawLine(self.origin_pos, e.pos())
             self.update()
@@ -611,11 +611,11 @@ class Canvas(QLabel):
     def generic_poly_mouseDoubleClickEvent(self, e):
         self.timer_cleanup()
         p = QPainter(self.pixmap())
-        p.setPen(QPen(self.primary_color, self.config['size'], Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        p.setPen(QPen(Qt.white, self.config['size'], Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
 
         # Note the brush is ignored for polylines.
-        if self.secondary_color:
-            p.setBrush(QBrush(self.secondary_color))
+        # if self.secondary_color:
+        #     p.setBrush(QBrush(self.secondary_color))
 
         getattr(p, self.active_shape_fn)(*self.history_pos + [e.pos()])
         self.update()
@@ -706,11 +706,14 @@ class Canvas(QLabel):
         
     def copy_to_clipboard(self, move_x, move_y):
         # clipboard = QApplication.clipboard()
-
+        select = None
         if self.mode == 'selectrect' and self.locked:
-            selectrect = self.selectrect_copy()
-            # clipboard.setPixmap(selectrect)
-            selectrect.save('./temp/sketch_crop.png', "PNG")
+            select = self.selectrect_copy()
+        if self.mode == 'selectpoly' and self.locked:
+            select = self.selectpoly_copy()
+        
+        if select:
+            select.save('./temp/sketch_crop.png', "PNG")
             sketch = cv2.imread('./temp/sketch.png')
             sketch_crop = cv2.imread('./temp/sketch_crop.png')
             x1, y1 = self.origin_pos.x(), self.origin_pos.y()
@@ -797,12 +800,11 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
         # Initialize button colours.
         self.stampButton.hide()
         self.textButton.hide()
-        self.lineButton.hide()
-        self.polylineButton.hide()
-        self.rectButton.hide()
         self.polygonButton.hide()
         self.roundrectButton.hide()
         self.fillButton.hide()
+        
+        self.selectpolyButton.hide()
         if self.mode == 0:
             for n, hex in enumerate(COLORS, 1):
                 btn = getattr(self, 'colorButton_%d' % n)
@@ -812,7 +814,9 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
             self.stampnextButton.hide()
             self.sprayButton.hide()
         elif self.mode == 1:
-            self.selectpolyButton.hide()
+            self.polylineButton.hide()
+            self.lineButton.hide()
+            self.rectButton.hide()
             self.selectrectButton.hide()
             self.penButton.hide()
             self.eraserButton.hide()
