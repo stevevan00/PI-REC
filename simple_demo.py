@@ -45,7 +45,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dlg = QColorDialog(self.sketchGraphicsView)
         self.labelColors = None
         self.colors = None
-        self.K = 10
+        self.K = 6
         self.sigma = 2.5
         # check the exist of path and the weights files
         self.datasets = ['Asian', 'Non_Asian', 'Anime', 'Pixiv', 'Webtoon']
@@ -231,6 +231,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 cv2.imwrite(fileName+'.png',self.color_domain)
                 
     def save_output(self):
+        # name = 'Webtoon'
+        
+        # for index, ds in enumerate(self.datasets):
+        #     self.outputImg = None
+        #     self.model_G = self.models_G[index]
+        #     self.model_R = self.models_R[index]
+            
+        #     for c in ['Generate', 'Refine']:
+        #         if c == 'Generate': self.reconstruct_image()
+        #         else: self.refine_image()
+        #         fileName = './output/{}_{}_{}'.format(name, ds, c)
+        #         cv2.imwrite(fileName+'.png',self.outputImg)
+            
         if type(self.outputImg):
             fileName, _ = QFileDialog.getSaveFileName(self, "Save File",
                     QDir.currentPath())
@@ -352,6 +365,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         ind = ds[0]
         self.model_G = self.models_G[ind]
         self.model_R = self.models_R[ind]
+        self.reconstruct_image()
     
     def concat_sketch_color(self, edge, color, invert=True):
         img = cv2.addWeighted(color, 1, edge, 1, 0.0)
@@ -397,6 +411,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def open_color_designer(self):
         path = './temp/color_domain.png'
         cv2.imwrite(path,self.color_domain)
+        path = './temp/sketch.png'
+        cv2.imwrite(path,self.edge)
         new_color_domain = self.concat_sketch_color(self.edge, self.color_domain)
         path = './temp/color_domain_sketch.png'
         cv2.imwrite(path,new_color_domain)

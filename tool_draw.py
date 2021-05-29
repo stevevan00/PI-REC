@@ -284,6 +284,17 @@ def lighter(output):
     # res = cv.merge((bH, gH, rH))
     return res
 
+def darker(output):
+    alpha = 0.9
+    res = np.uint8(np.clip((alpha * output + 125*(1-alpha)), 0, 255))
+    # (b, g, r) = cv.split(output)
+    # bH = cv.equalizeHist(b)
+    # gH = cv.equalizeHist(g)
+    # rH = cv.equalizeHist(r)
+    # # 合并每一个通道
+    # res = cv.merge((bH, gH, rH))
+    return res
+
 
 if __name__ == '__main__':
 
@@ -300,7 +311,7 @@ if __name__ == '__main__':
     # check the exist of path and the weights files
     datasets = ['Asian', 'Non_Asian', 'Anime', 'Pixiv', 'Webtoon']
     # datasets = ['Asian', 'celeba', 'getchu-anime', 'Pixiv', 'Webtoon']
-    add_prev = True
+    add_prev = False
     if add_prev: datasets += ['celeba', 'getchu-anime']
     models_G = []
     models_R = []
@@ -495,8 +506,10 @@ if __name__ == '__main__':
                 print("\nRefinement using output and edge...")
                 output = model_refine(output, edge)
                 print("\nFinished!")
+        elif k == ord('k'):
+            color_domain = darker(color_domain)
         elif k == ord('l'):
-            output = lighter(output)
+            color_domain = lighter(color_domain)
         elif k == ord('e'):
             eraser_mode = not eraser_mode
         elif k == ord('z'):
