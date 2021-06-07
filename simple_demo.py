@@ -11,6 +11,7 @@ import sys
 from colorutils import rgb_to_hex, hex_to_rgb, rgb_to_hsv
 import cv2
 import numpy as np
+import argparse
 
 sketchButtons = [
     'designerSketchBtn',
@@ -36,7 +37,7 @@ outputButtons = [
 ]
 
 class MainWindow(QMainWindow, Ui_MainWindow):
-    def __init__(self, *args, **kwargs):
+    def __init__(self,param, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setupUi(self)
         
@@ -47,8 +48,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dlg = QColorDialog(self.sketchGraphicsView)
         self.labelColors = None
         self.colors = None
-        self.K = 4
-        self.sigma = 2.6
+        self.K = param.kmeans
+        self.sigma = param.canny
         # check the exist of path and the weights files
         self.datasets = ['Asian', 'Non_Asian', 'Anime', 'Pixiv', 'Webtoon']
         self.models_G = []
@@ -443,6 +444,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    application = MainWindow()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--canny', type=float, default=2.6, help='sigma of canny')
+    parser.add_argument('-k', '--kmeans', type=int, default=4, help='color numbers of kmeans')
+    args = parser.parse_args()
+    application = MainWindow(args)
     application.show()
     sys.exit(app.exec_())
