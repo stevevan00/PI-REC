@@ -59,7 +59,7 @@ def initial_colorful_pic(file, sigma, kmeans):
     # K = np.random.randint(2, 6)
     out_blur = img_kmeans(out_blur, int(kmeans))
     out_blur = cv2.medianBlur(out_blur, np.random.randint(1, 4) * 2 - 1)
-    return out_edge, out_blur
+    return img, out_edge, out_blur
 
 
 def load_model_G(config):

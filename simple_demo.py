@@ -9,6 +9,8 @@ from ui.designer.paint import DesignerWindow
 from MainWindow import Ui_MainWindow
 import sys
 from colorutils import rgb_to_hex, hex_to_rgb, rgb_to_hsv
+import cv2
+import numpy as np
 
 sketchButtons = [
     'designerSketchBtn',
@@ -45,8 +47,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dlg = QColorDialog(self.sketchGraphicsView)
         self.labelColors = None
         self.colors = None
-        self.K = 6
-        self.sigma = 2.5
+        self.K = 4
+        self.sigma = 2.6
         # check the exist of path and the weights files
         self.datasets = ['Asian', 'Non_Asian', 'Anime', 'Pixiv', 'Webtoon']
         self.models_G = []
@@ -267,10 +269,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         "Cannot load %s." % self.fileName)
                 return
 
-            self.image = image.scaled(self.sketchGraphicsView.size(), Qt.IgnoreAspectRatio)
+            # self.image = image.scaled(self.sketchGraphicsView.size(), Qt.IgnoreAspectRatio)
 
             
-            edge, color_domain = initial_colorful_pic(self.fileName, self.sigma,self.K)
+            img, edge, color_domain = initial_colorful_pic(self.fileName, self.sigma,self.K)
+            self.image = img
             # edge = np.expand_dims(edge,axis=2)
             edge = cv2.cvtColor(edge,cv2.COLOR_GRAY2BGR)
             self.edge = edge
@@ -315,10 +318,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             scene = QGraphicsScene(self)
             scene.addPixmap(QPixmap.fromImage(qim))
             self.outputGraphicsView.setScene(scene)
-        else:
-            scene = QGraphicsScene(self)
-            scene.addPixmap(self.image)
-            self.outputGraphicsView.setScene(scene)
+        
+        result = self.image
+        qim = QImage(result.data, result.shape[1], result.shape[0], result.strides[0], QImage.Format_BGR888)
+        scene = QGraphicsScene(self)
+        scene.addPixmap(QPixmap.fromImage(qim))
+        self.gtGraphicsView.setScene(scene)
+        
         self.update_color_dominant()
     
     def update_color_dominant(self):
@@ -388,7 +394,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def flip_image_horizontal(self):
         self.edge = cv2.flip(self.edge, 1)
         self.color_domain = cv2.flip(self.color_domain, 1)
-        self.image = self.image.transformed(QTransform().scale(-1, 1))
+        self.image = cv2.flip(self.image, 1)
         if type(self.outputImg):
             self.outputImg = cv2.flip(self.outputImg, 1)
         self.update_views()
@@ -396,7 +402,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def flip_image_vertical(self):
         self.edge = cv2.flip(self.edge, 0)
         self.color_domain = cv2.flip(self.color_domain, 0)
-        self.image = self.image.transformed(QTransform().scale(1, -1))
+        self.image = cv2.flip(self.image, 0)
         if type(self.outputImg):
             self.outputImg = cv2.flip(self.outputImg, 0)
         self.update_views()

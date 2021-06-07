@@ -109,14 +109,14 @@
       </spacer>
      </item>
      <item>
-      <widget class="QLabel" name="label_3">
+      <widget class="QLabel" name="label_6">
        <property name="text">
-        <string>Output</string>
+        <string>Ground Truth</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QGraphicsView" name="outputGraphicsView">
+      <widget class="QGraphicsView" name="gtGraphicsView">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
          <horstretch>0</horstretch>
@@ -277,9 +277,9 @@
    <widget class="QWidget" name="verticalLayoutWidget_4">
     <property name="geometry">
      <rect>
-      <x>210</x>
+      <x>400</x>
       <y>470</y>
-      <width>501</width>
+      <width>311</width>
       <height>171</height>
      </rect>
     </property>
@@ -347,6 +347,47 @@
     </property>
     <property name="text">
      <string>Model</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_3">
+    <property name="geometry">
+     <rect>
+      <x>210</x>
+      <y>447</y>
+      <width>176</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Output</string>
+    </property>
+   </widget>
+   <widget class="QGraphicsView" name="outputGraphicsView">
+    <property name="geometry">
+     <rect>
+      <x>210</x>
+      <y>470</y>
+      <width>176</width>
+      <height>176</height>
+     </rect>
+    </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>176</width>
+      <height>176</height>
+     </size>
+    </property>
+    <property name="verticalScrollBarPolicy">
+     <enum>Qt::ScrollBarAlwaysOff</enum>
+    </property>
+    <property name="horizontalScrollBarPolicy">
+     <enum>Qt::ScrollBarAlwaysOff</enum>
     </property>
    </widget>
   </widget>
