@@ -45,7 +45,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.fileName = None
         self.clearMode = False
         self.input_size = 176
-        self.dlg = QColorDialog(self.sketchGraphicsView)
+        self.dlg = QColorDialog(self.colorGraphicsView)
         self.labelColors = None
         self.colors = None
         self.K = param.kmeans
@@ -97,65 +97,29 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.viewerOutputBtn.clicked.connect(self.open_output_viewer)
         self.saveOutputBtn.clicked.connect(self.save_output)
     
+    def open_palette(self, index):
+        color = self.colors[index]
+        result = QColorDialog.getColor(QColor(color[2], color[1], color[0]))
+        if QColor.isValid(result):
+            if color[2] == color[1] == color[0] == 0: self.colors[index] = [1,1,1]
+            else: self.colors[index] = [result.blue(), result.green(), result.red()]
+            res = self.colors[self.labelColors.flatten()]
+            res = res.reshape((self.color_domain.shape))
+            self.color_domain = res
+            
+            self.update_views()
+            
     def open_palette_1(self):
-        self.dlg.exec_()
-        color = self.dlg.currentColor().name()
-        if color == '#000000': color = '#000001' 
-        
-        color_domain = self.color_domain
-        rgb = hex_to_rgb(color)
-        
-        self.colors[0] = rgb[::-1]
-        res = self.colors[self.labelColors.flatten()]
-        res = res.reshape((color_domain.shape))
-        self.color_domain = res
-        
-        self.update_views()
+        self.open_palette(0)
         
     def open_palette_2(self):
-        self.dlg.exec_()
-        color = self.dlg.currentColor().name()
-        if color == '#000000': color = '#000001' 
-        
-        color_domain = self.color_domain
-        rgb = hex_to_rgb(color)
-        
-        self.colors[1] = rgb[::-1]
-        res = self.colors[self.labelColors.flatten()]
-        res = res.reshape((color_domain.shape))
-        self.color_domain = res
-        
-        self.update_views()
+        self.open_palette(1)
         
     def open_palette_3(self):
-        self.dlg.exec_()
-        color = self.dlg.currentColor().name()
-        if color == '#000000': color = '#000001' 
-        
-        color_domain = self.color_domain
-        rgb = hex_to_rgb(color)
-        
-        self.colors[2] = rgb[::-1]
-        res = self.colors[self.labelColors.flatten()]
-        res = res.reshape((color_domain.shape))
-        self.color_domain = res
-        
-        self.update_views()
+        self.open_palette(2)
         
     def open_palette_4(self):
-        self.dlg.exec_()
-        color = self.dlg.currentColor().name()
-        if color == '#000000': color = '#000001' 
-        
-        color_domain = self.color_domain
-        rgb = hex_to_rgb(color)
-        
-        self.colors[3] = rgb[::-1]
-        res = self.colors[self.labelColors.flatten()]
-        res = res.reshape((color_domain.shape))
-        self.color_domain = res
-        
-        self.update_views()
+        self.open_palette(3)
     
     def reconstruct_image(self):
         # self.edge = self.make_sketch(self.edge, self.sketch_scene.sketch_points)
@@ -346,7 +310,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         #returning after converting to integer from float
         # print('Color Domain',center)
         self.labelColors = label
+        print(self.labelColors)
         self.colors = center
+        print(self.colors)
         for i in range(1,5):
             btn = getattr(self, 'dominantColor_{}'.format(i))
             btn.setStyleSheet('')
@@ -384,29 +350,37 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             img[:,:,:3][mask] = [r2, g2, b2]
         return img
  
+ 
+    def check_input_image(self, command):
+        if self.fileName: 
+            return True
+        else: 
+            buttonReply = QMessageBox.question(self, 'Error', "Please click File > Open Image to activate %s image"%command, QMessageBox.Yes, QMessageBox.Yes)
+            return False
+        
     def reset(self):
-        if self.fileName:
+        if self.check_input_image('reset'):
             self.clearMode = True
             self.open_image()
             self.clearMode = False
-        else:
-            buttonReply = QMessageBox.question(self, 'Error', "Please click File > Open Image to activate clear image", QMessageBox.Yes, QMessageBox.Yes)
 
     def flip_image_horizontal(self):
-        self.edge = cv2.flip(self.edge, 1)
-        self.color_domain = cv2.flip(self.color_domain, 1)
-        self.image = cv2.flip(self.image, 1)
-        if type(self.outputImg):
-            self.outputImg = cv2.flip(self.outputImg, 1)
-        self.update_views()
+        if self.check_input_image('flip horizontal'):
+            self.edge = cv2.flip(self.edge, 1)
+            self.color_domain = cv2.flip(self.color_domain, 1)
+            self.image = cv2.flip(self.image, 1)
+            if type(self.outputImg):
+                self.outputImg = cv2.flip(self.outputImg, 1)
+            self.update_views()
     
     def flip_image_vertical(self):
-        self.edge = cv2.flip(self.edge, 0)
-        self.color_domain = cv2.flip(self.color_domain, 0)
-        self.image = cv2.flip(self.image, 0)
-        if type(self.outputImg):
-            self.outputImg = cv2.flip(self.outputImg, 0)
-        self.update_views()
+        if self.check_input_image('flip vertical'):
+            self.edge = cv2.flip(self.edge, 0)
+            self.color_domain = cv2.flip(self.color_domain, 0)
+            self.image = cv2.flip(self.image, 0)
+            if type(self.outputImg):
+                self.outputImg = cv2.flip(self.outputImg, 0)
+            self.update_views()
     
     def open_sketch_designer(self):
         path = './temp/sketch.png'

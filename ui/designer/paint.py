@@ -760,6 +760,7 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.mode = mode
         self.path = None
+        self.selectionOn = False
         # Replace canvas placeholder from QtDesigner.
         self.verticalLayout_3.removeWidget(self.canvas)
         if self.mode == 0:
@@ -935,53 +936,7 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
             mask = (red == r1) & (green == g1) & (blue == b1)
             img[:,:,:3][mask] = [r2, g2, b2]
         return img
- 
-    def copy_to_clipboard(self, move_x, move_y):
-        # clipboard = QApplication.clipboard()
 
-        if self.canvas.mode == 'selectrect' and self.canvas.locked:
-            selectrect = self.canvas.selectrect_copy()
-            # clipboard.setPixmap(selectrect)
-            selectrect.save('./temp/sketch_crop.png', "PNG")
-            sketch = cv2.imread('./temp/sketch.png')
-            sketch_crop = cv2.imread('./temp/sketch_crop.png')
-            x1, y1 = self.canvas.origin_pos.x(), self.canvas.origin_pos.y()
-            x2, y2 = self.canvas.current_pos.x(), self.canvas.current_pos.y()
-            # move_x = 5
-            # move_y = -5
-            print(sketch_crop.shape)
-            w, h, c = sketch_crop.shape
-            sketch[y1:y1+w, x1:x1+h] = np.zeros((w, h, c))
-            
-            if move_x > 0:
-                new_x2 = x2+move_x if x2+move_x <= 176 else 176
-                new_x1 = new_x2 - h
-            else:
-                new_x1 = x1+move_x if x1+move_x >= 0 else 0
-                new_x2 = new_x1 + h
-                
-            if move_y > 0:
-                new_y2 = y2+move_y if y2+move_y <= 176 else 176
-                new_y1 = new_y2 - w
-            else:
-                new_y1 = y1+move_y if y1+move_y >= 0 else 0
-                new_y2 = new_y1 + w
-                
-            sketch[new_y1:new_y2, new_x1:new_x2] = sketch_crop
-            cv2.imwrite('./temp/sketch.png', sketch)
-            self.open_file_mode('./temp/sketch.png')
-            self.canvas.origin_pos.setX(new_x1)
-            self.canvas.origin_pos.setY(new_y1)
-            self.canvas.current_pos.setX(new_x2)
-            self.canvas.current_pos.setY(new_y2)
-            # print(self.origin_pos.x(), self.origin_pos.y(), self.current_pos.x(), self.current_pos.y() )
-        
-            
-        # elif self.canvas.mode == 'selectpoly' and self.canvas.locked:
-        #     clipboard.setPixmap(self.canvas.selectpoly_copy())
-
-        # else:
-        #     clipboard.setPixmap(self.canvas.pixmap())
 
     def open_file_mode(self, path):
         """
