@@ -719,7 +719,7 @@ class Canvas(QLabel):
             x1, y1 = self.origin_pos.x(), self.origin_pos.y()
             x2, y2 = self.current_pos.x(), self.current_pos.y()
             w, h, c = sketch_crop.shape
-            sketch_crop = sketch_crop[:(y2-y1), :(x2-x1)]
+            sketch_crop = sketch_crop[1:(y2-y1)+1, 1:(x2-x1)+1]
             
             w, h, c = sketch_crop.shape
             
@@ -750,6 +750,7 @@ class Canvas(QLabel):
             self.origin_pos.setY(new_y1)
             self.current_pos.setX(new_x2)
             self.current_pos.setY(new_y2)
+            self.last_pos = None
 
 class DesignerWindow(QMainWindow, Ui_MainWindow):
 
