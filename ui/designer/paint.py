@@ -51,13 +51,6 @@ CANVAS_DIMENSIONS = 176, 176
 STAMPS = [
     './temp/color_domain.png',
     './temp/sketch.png',
-    # ':/stamps/pie-cherry.png',
-    # ':/stamps/pie-cherry2.png',
-    # ':/stamps/pie-lemon.png',
-    # ':/stamps/pie-moon.png',
-    # ':/stamps/pie-pork.png',
-    # ':/stamps/pie-pumpkin.png',
-    # ':/stamps/pie-walnut.png',
 ]
 
 SELECTION_PEN = QPen(QColor(Qt.white), 1, Qt.DashLine)
@@ -385,49 +378,6 @@ class Canvas(QLabel):
                 self.copy_to_clipboard(move, 0)
             elif event.key() == QtCore.Qt.Key_Q:
                 self.set_mode('selectrect')
-            
-    def text_mousePressEvent(self, e):
-        if e.button() == Qt.LeftButton and self.current_pos is None:
-            self.current_pos = e.pos()
-            self.current_text = ""
-            self.timer_event = self.text_timerEvent
-
-        elif e.button() == Qt.LeftButton:
-
-            self.timer_cleanup()
-            # Draw the text to the image
-            p = QPainter(self.pixmap())
-            p.setRenderHints(QPainter.Antialiasing)
-            font = build_font(self.config)
-            p.setFont(font)
-            pen = QPen(self.primary_color, 1, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
-            p.setPen(pen)
-            p.drawText(self.current_pos, self.current_text)
-            self.update()
-
-            self.reset_mode()
-
-        elif e.button() == Qt.RightButton and self.current_pos:
-            self.reset_mode()
-
-    def text_timerEvent(self, final=False):
-        p = QPainter(self.pixmap())
-        p.setCompositionMode(QPainter.RasterOp_SourceXorDestination)
-        pen = PREVIEW_PEN
-        p.setPen(pen)
-        if self.last_text:
-            font = build_font(self.last_config)
-            p.setFont(font)
-            p.drawText(self.current_pos, self.last_text)
-
-        if not final:
-            font = build_font(self.config)
-            p.setFont(font)
-            p.drawText(self.current_pos, self.current_text)
-
-        self.last_text = self.current_text
-        self.last_config = self.config.copy()
-        self.update()
 
     # Fill events
 
@@ -1008,7 +958,7 @@ class DesignerWindow(QMainWindow, Ui_MainWindow):
             self.canvas.setPixmap(pixmap)
 
     def save_file(self):
-        if self.canvas.locked:
+        if self.mode == 0 and self.canvas.locked:
             QMessageBox.information(self, "Canvas locked",
                     "Cannot save because your action on selection hadn't completed")
         else:
