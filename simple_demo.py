@@ -67,7 +67,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.model_R = self.models_R[0]
         
         # Add item to combobox
-        for d in self.datasets:
+        for d in ['Asian', 'Non_Asian', 'Anime', 'Pixiv', 'Webtoon']:
             self.modelCombo.addItem(d)
         self.modelCombo.activated[str].connect(self.on_model_changed)
         
@@ -76,18 +76,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionFlip_Horizontal.triggered.connect(self.flip_image_horizontal)
         self.actionFlip_Vertical.triggered.connect(self.flip_image_vertical)
         
+        
         #sketch button
         self.designerSketchBtn.clicked.connect(self.open_sketch_designer)
         self.viewerSketchBtn.clicked.connect(self.open_sketch_viewer)
         self.saveSketchBtn.clicked.connect(self.save_sketch)
         
         #color button
-        for i in range(1,5):
-            getattr(self, 'dominantColor_{}'.format(i)).clicked.connect(getattr(self, 'open_palette_{}'.format(i)))
-        # self.dominantColor_1.clicked.connect(self.open_palette_1)
-        # self.dominantColor_2.clicked.connect(self.open_palette_2)
-        # self.dominantColor_3.clicked.connect(self.open_palette_3)
-        # self.dominantColor_4.clicked.connect(self.open_palette_4)
+        self.dominantColor_1.clicked.connect(self.open_palette_1)
+        self.dominantColor_2.clicked.connect(self.open_palette_2)
+        self.dominantColor_3.clicked.connect(self.open_palette_3)
+        self.dominantColor_4.clicked.connect(self.open_palette_4)
         self.designerColorBtn.clicked.connect(self.open_color_designer)
         self.viewerColorBtn.clicked.connect(self.open_color_viewer)
         self.saveColorBtn.clicked.connect(self.save_color)
@@ -389,7 +388,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.canvasWindow = DesignerWindow(mode=0)
         self.canvasWindow.show()
         self.canvasWindow._signal.connect(self.on_close_sketch_designer)
-                
+            
     def open_color_designer(self):
         path = './temp/color_domain.png'
         cv2.imwrite(path,self.color_domain)
@@ -401,7 +400,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.canvasWindow = DesignerWindow(mode=1)
         self.canvasWindow.show() 
         self.canvasWindow._signal.connect(self.on_close_color_designer)
-
+    
     def on_close_sketch_designer(self, path):
         edge = cv2.imread(path)
         edge = cv2.resize(edge, (self.input_size, self.input_size), interpolation=cv2.INTER_LANCZOS4)
