@@ -14,13 +14,29 @@ from src.config import Config
 
 WIN_SIZE=176
 
-def initial_pics(edge_file, color_domain_file):
-    edge_file = cv2.imread(edge_file, cv2.IMREAD_GRAYSCALE)
-    edge_file = cv2.resize(edge_file, (WIN_SIZE, WIN_SIZE), interpolation=cv2.INTER_LANCZOS4)
-    edge_file[edge_file <= 59] = 0
-    edge_file[edge_file > 59] = 255
-    color_domain_file = cv2.imread(color_domain_file)
-    color_domain_file = cv2.resize(color_domain_file, (WIN_SIZE, WIN_SIZE))
+def initial_pics(edge_file=None, color_domain_file=None):
+    if edge_file:
+        edge_file = cv2.imread(edge_file, cv2.IMREAD_GRAYSCALE)
+        imgh, imgw = edge_file.shape[0:2]
+        if imgh != imgw:
+            # center crop
+            side = np.minimum(imgh, imgw)
+            j = (imgh - side) // 2
+            i = (imgw - side) // 2
+            edge_file = edge_file[j:j + side, i:i + side, ...]
+        edge_file = cv2.resize(edge_file, (WIN_SIZE, WIN_SIZE), interpolation=cv2.INTER_LANCZOS4)
+        edge_file[edge_file <= 59] = 0
+        edge_file[edge_file > 59] = 255
+    if color_domain_file:
+        imgh, imgw = color_domain_file.shape[0:2]
+        if imgh != imgw:
+            # center crop
+            side = np.minimum(imgh, imgw)
+            j = (imgh - side) // 2
+            i = (imgw - side) // 2
+            color_domain_file = color_domain_file[j:j + side, i:i + side, ...]
+        color_domain_file = cv2.imread(color_domain_file)
+        color_domain_file = cv2.resize(color_domain_file, (WIN_SIZE, WIN_SIZE))
     
     return edge_file, color_domain_file
 

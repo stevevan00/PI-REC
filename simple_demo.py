@@ -253,43 +253,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.button_enabled(colorButtons)
             self.button_enabled(outputButtons[:1])
             self.button_disabled(outputButtons[1:])
-            
+    
+    def setGraphicsView(self, img, graphic_view):
+        qimg = QImage(img.data, img.shape[1], img.shape[0], img.strides[0], QImage.Format_BGR888)
+        scene = QGraphicsScene(self)
+        scene.addPixmap(QPixmap.fromImage(qimg))
+        getattr(self, graphic_view).setScene(scene)
+        
     def update_views(self):
-        edge, color_domain = self.edge, self.color_domain
-        # self.sketchGraphicsView.reset()
-        # if len(self.sketchGraphicsView.items())>0:
-        #     self.sketchGraphicsView.reset_items()
-        qedge = cvImage2QImage(edge)
-        scene = QGraphicsScene(self)
-        scene.addPixmap(QPixmap(qedge))
-        self.sketchGraphicsView.setScene(scene)
-        
-        # self.colorGraphicsView.reset()
-        # if len(self.colorGraphicsView.items())>0:
-        #     self.colorGraphicsView.reset_items()
-        
-        new_color_domain = self.concat_sketch_color(edge, color_domain)
-        qcolor_domain = cvImage2QImage(new_color_domain)
-        scene = QGraphicsScene(self)
-        scene.addPixmap(QPixmap(qcolor_domain))
-        self.colorGraphicsView.setScene(scene)
-            
-        # if len(self.outputGraphicsView.items())>0:
-        #     self.outputGraphicsView.removeItem(self.outputGraphicsView.items()[-1])
+        self.setGraphicsView(self.edge, 'sketchGraphicsView')
+        new_color_domain = self.concat_sketch_color(self.edge, self.color_domain)
+        self.setGraphicsView(new_color_domain, 'colorGraphicsView')
             
         if self.outputImg is not None:
-            result = self.outputImg
-            qim = QImage(result.data, result.shape[1], result.shape[0], result.strides[0], QImage.Format_BGR888)
-            scene = QGraphicsScene(self)
-            scene.addPixmap(QPixmap.fromImage(qim))
-            self.outputGraphicsView.setScene(scene)
+            self.setGraphicsView(self.outputImg, 'outputGraphicsView')
         
-        result = self.image
-        qim = QImage(result.data, result.shape[1], result.shape[0], result.strides[0], QImage.Format_BGR888)
-        scene = QGraphicsScene(self)
-        scene.addPixmap(QPixmap.fromImage(qim))
-        self.gtGraphicsView.setScene(scene)
-        
+        self.setGraphicsView(self.image, 'gtGraphicsView')
         self.update_color_dominant()
     
     def update_color_dominant(self):
@@ -415,6 +394,36 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.color_domain = cv2.resize(color_domain, (self.input_size, self.input_size), interpolation=cv2.INTER_LANCZOS4)
         self.update_views()
         print(path)
+        
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Z:
+            fileName, _ = QFileDialog.getOpenFileName(self, "Open File", QDir.currentPath())
+            print(fileName)
+            if fileName:
+                image = QPixmap(self.fileName)
+                if image.isNull():
+                    QMessageBox.information(self, "Image Viewer",
+                            "Cannot load %s." % self.fileName)
+                    return
+                print(self.edge.shape)
+                # revert = cv2.bitwise_not(cv2.imread(fileName, cv2.IMREAD_GRAYSCALE))
+                # cv2.imwrite(fileName, revert)
+                # cv2.imshow('image', self.edge)
+                self.edge, _ = initial_pics(fileName)
+                self.edge = cv2.cvtColor(self.edge, cv2.COLOR_GRAY2BGR)
+                print(self.edge.shape)
+                self.update_views()
+
+        elif event.key() == Qt.Key_W:
+            fileName, _ = QFileDialog.getOpenFileName(self, "Open File", QDir.currentPath())
+            if fileName:
+                image = QPixmap(self.fileName)
+                if image.isNull():
+                    QMessageBox.information(self, "Image Viewer",
+                            "Cannot load %s." % self.fileName)
+                    return
+                self.color_domain = cv2.imread(fileName)
+                self.update_views()
                                 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
